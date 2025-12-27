@@ -87,7 +87,7 @@ Charlie,40,Denver"></textarea>
     function parseCsvSimple(text) {
       const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
       if (lines.length === 0) return { headers: [], rows: [] };
-      const headers = lines[0].split(',').map(h => h.trim());
+      const headers = trimTrailingEmpty(lines[0].split(',').map(h => h.trim()));
       const rows = lines.slice(1).map(line => line.split(',').map(v => v.trim()));
       return { headers, rows };
     }
@@ -143,9 +143,17 @@ Charlie,40,Denver"></textarea>
         ? parseCsvLineQuoted(line)
         : line.split(',').map(v => v.trim());
 
-      const headers = parseLineSmart(rawLines[0]);
+      const headers = trimTrailingEmpty(parseLineSmart(rawLines[0]));
       const rows = rawLines.slice(1).map(parseLineSmart);
       return rowsToObjects(headers, rows);
+    }
+
+    function trimTrailingEmpty(arr) {
+      let end = arr.length;
+      while (end > 0 && (arr[end - 1] === '' || arr[end - 1] === null || arr[end - 1] === undefined)) {
+        end--;
+      }
+      return arr.slice(0, end);
     }
 
     function rowsToObjects(headers, rows) {
