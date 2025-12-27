@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSV → JSON Converter</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #22d3ee;
+      --border: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: clamp(0.75rem, 2.5vw, 2rem); font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    .container { width: clamp(320px, 100%, 1280px); margin: 0 auto; }
+    h1 { margin: 0 0 1rem; font-size: 1.5rem; }
+    p.note { color: var(--muted); margin-top: .25rem; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: 1fr; align-items: start; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: .5rem; padding: 1rem; }
+    label { font-weight: 600; display: block; margin-bottom: .5rem; }
+    textarea {
+      width: 100%; min-height: clamp(220px, 35vh, 360px); resize: vertical; border-radius: .5rem; padding: .75rem; line-height: 1.4;
+      border: 1px solid var(--border); background: #0b1220; color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; }
+    button {
+      appearance: none; border: 1px solid var(--border); color: var(--text); background: #0b1220;
+      padding: .6rem .9rem; border-radius: .5rem; font-weight: 600; cursor: pointer;
+    }
+    button.primary { border-color: #164e63; background: #0e7490; }
+    button:hover { filter: brightness(1.1); }
+    .small { font-size: .9rem; color: var(--muted); }
+    .footer { margin-top: 1rem; color: var(--muted); }
+
+    /* Mobile-first: switch to two columns at >=640px */
+    @media (min-width: 640px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>CSV → JSON Converter</h1>
+    <p class="note">Assumptions: first row are field names; subsequent rows are values.</p>
+
+    <div class="grid">
+      <div class="panel">
+      <label for="csv-input">CSV Input</label>
+      <textarea id="csv-input" placeholder="name,age,city
+Alice,30,Seattle
+Bob,25,Austin
+Charlie,40,Denver"></textarea>
+      <div class="actions">
+        <button id="convert" class="primary">Convert to JSON</button>
+        <button id="clear">Clear</button>
+      </div>
+      <p class="small">Delimiter: comma. Empty lines are ignored. Extra values beyond header count are discarded; missing values become null.</p>
+      </div>
+
+      <div class="panel">
+      <label for="json-output">JSON Output</label>
+      <textarea id="json-output" readonly placeholder='[
+  {
+    "name": "Alice",
+    "age": 30,
+    "city": "Seattle"
+  }
+]'></textarea>
+      <div class="actions">
+        <button id="copy">Copy JSON</button>
+        <button id="download">Download JSON</button>
+      </div>
+      </div>
+    </div>
+
+    <div class="footer small">Tip: Paste CSV on the left, click Convert, then copy or download JSON.</div>
+  </div>
+
+  <script>
+    function parseCsvSimple(text) {
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      if (lines.length === 0) return { headers: [], rows: [] };
+      const headers = lines[0].split(',').map(h => h.trim());
+      const rows = lines.slice(1).map(line => line.split(',').map(v => v.trim()));
+      return { headers, rows };
+    }
+
+    // Parse a single CSV line supporting double-quoted fields with embedded commas and escaped quotes
+    // RFC4180-style: "value with , comma" and escaping via ""
+    function parseCsvLineQuoted(line) {
+      const values = [];
+      let buf = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            // Escaped quote inside quoted field
+            buf += '"';
+            i++; // skip the escaped quote
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          values.push(buf);
+          buf = '';
+        } else {
+          buf += ch;
+        }
+      }
+      values.push(buf);
+      // Cleanup: trim and remove surrounding quotes; unescape doubled quotes
+      return values.map(v => {
+        let s = v.trim();
+        if (s.startsWith('"') && s.endsWith('"')) {
+          s = s.slice(1, -1);
+          s = s.replace(/""/g, '"');
+        }
+        return s;
+      });
+    }
+
+    function csvToJsonArray(text) {
+      const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      if (rawLines.length === 0) return [];
+
+      // If no quotation marks appear in any line, use the simple parser for efficiency
+      const hasAnyQuotes = rawLines.some(l => l.includes('"'));
+      if (!hasAnyQuotes) {
+        const { headers, rows } = parseCsvSimple(text);
+        return rowsToObjects(headers, rows);
+      }
+
+      // Otherwise, parse line-by-line: quoted-aware when quotes present, else simple split
+      const parseLineSmart = (line) => line.includes('"')
+        ? parseCsvLineQuoted(line)
+        : line.split(',').map(v => v.trim());
+
+      const headers = parseLineSmart(rawLines[0]);
+      const rows = rawLines.slice(1).map(parseLineSmart);
+      return rowsToObjects(headers, rows);
+    }
+
+    function rowsToObjects(headers, rows) {
+      if (!headers || headers.length === 0) return [];
+      const out = [];
+      for (const values of rows) {
+        const obj = {};
+        for (let i = 0; i < headers.length; i++) {
+          const key = headers[i];
+          const val = values[i] ?? null;
+          const num = val !== null && /^-?\d+(?:\.\d+)?$/.test(val) ? Number(val) : val;
+          obj[key] = num;
+        }
+        const allNull = Object.values(obj).every(v => v === null);
+        if (!allNull) out.push(obj);
+      }
+      return out;
+    }
+
+    function stringifyJsonPretty(obj) {
+      try { return JSON.stringify(obj, null, 2); } catch { return '[]'; }
+    }
+
+    const elCsv = document.getElementById('csv-input');
+    const elJson = document.getElementById('json-output');
+    const btnConvert = document.getElementById('convert');
+    const btnClear = document.getElementById('clear');
+    const btnCopy = document.getElementById('copy');
+    const btnDownload = document.getElementById('download');
+
+    btnConvert.addEventListener('click', () => {
+      const text = elCsv.value.trim();
+      if (!text) { elJson.value = '[]'; return; }
+      const json = csvToJsonArray(text);
+      elJson.value = stringifyJsonPretty(json);
+    });
+
+    btnClear.addEventListener('click', () => {
+      elCsv.value = '';
+      elJson.value = '';
+      elCsv.focus();
+    });
+
+    btnCopy.addEventListener('click', async () => {
+      const val = elJson.value;
+      if (!val) return;
+      try {
+        await navigator.clipboard.writeText(val);
+        btnCopy.textContent = 'Copied!';
+        setTimeout(() => btnCopy.textContent = 'Copy JSON', 1200);
+      } catch {}
+    });
+
+    btnDownload.addEventListener('click', () => {
+      const val = elJson.value || '[]';
+      const blob = new Blob([val], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'data.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // Auto-convert on input for convenience
+    elCsv.addEventListener('input', () => {
+      const text = elCsv.value.trim();
+      const json = csvToJsonArray(text);
+      elJson.value = stringifyJsonPretty(json);
+    });
+  </script>
+</body>
+</html>
