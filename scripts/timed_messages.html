@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timed Messages Display - Audio Synchronization Tool</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        .message-container {
+            text-align: center;
+            padding: 20px;
+            width: 800px;
+        }
+
+        .message {
+            font-size: 16pt;
+            color: #333;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column; /* stack image above text */
+            align-items: center;
+            justify-content: center;
+            gap: 20px; /* ~20px spacing between image and message text */
+            padding: 5px 20px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+        }
+
+        .message-text {
+            opacity: 1;
+            transition: opacity 0.2s ease-in-out;
+            background-color: #cccccc;
+            padding: 5px;
+            width: 500px;
+        }
+
+        .message.visible .message-text {
+            opacity: 1;
+        }
+
+        /* Image placeholder area for optional images during script run */
+        .image-slot {
+            width: 400px;
+            height: 300px;
+            margin: 0 auto 0 auto; /* spacing handled by parent gap */
+            border: 1px dashed #ccc;
+            border-radius: 10px;
+            background-color: #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .image-slot img {
+            max-width: 100%;
+            max-height: 100%;
+            display: none; /* hidden until an image is set */
+        }
+
+        .image-slot.has-image img {
+            display: block;
+        }
+
+        .placeholder-label {
+            font-size: 12pt;
+            color: #999;
+        }
+
+        .image-slot.has-image .placeholder-label {
+            display: none;
+        }
+
+        .header {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .header h1 {
+            font-size: 20pt;
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .header p {
+            font-size: 12pt;
+            margin: 0;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .timer-display {
+            font-size: 24pt;
+            color: #666;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+
+        .csv-input-container {
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .csv-input-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14pt;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .csv-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 10px;
+            font-size: 12pt;
+            font-family: 'Courier New', monospace;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .csv-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .csv-input:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .button-group {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .start-button, .pause-button, .reset-button {
+            padding: 12px 24px;
+            font-size: 14pt;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .start-button {
+            background-color: #4CAF50;
+        }
+
+        .start-button:hover:not(:disabled) {
+            background-color: #45a049;
+        }
+
+        .pause-button {
+            background-color: #ff9800;
+        }
+
+        .pause-button:hover:not(:disabled) {
+            background-color: #e68900;
+        }
+
+        .reset-button {
+            background-color: #2196F3;
+        }
+
+        .reset-button:hover:not(:disabled) {
+            background-color: #0b7dda;
+        }
+
+        .start-button:disabled, .pause-button:disabled, .reset-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="message-container">
+        <div class="header">
+            <h1>Timed Messages Display</h1>
+            <p>Used for syncing with audio playback to verify animation event timestamps. Optional images will appear above each message when specified.</p>
+        </div>
+        <div id="timerDisplay" class="timer-display">-0:05</div>
+        <div id="messageDisplay" class="message">
+            <div id="imageSlot" class="image-slot">
+                <span class="placeholder-label">400×300</span>
+                <!-- Optional image element (hidden by default) -->
+                <img id="imageSlotImage" alt="Optional message image" />
+            </div>
+            <span class="message-text">&nbsp;</span>
+        </div>
+        <div class="csv-input-container">
+            <label for="csvInput" class="csv-input-label">Messages (CSV format: timestamp,message[,image])</label>
+            <textarea id="csvInput" class="csv-input" placeholder="0:00,First message appears immediately,first.png&#10;0:05,Second message at 5 seconds&#10;1:00,Third message at 1 minute,third.jpg&#10;1:30,Fourth message at 1 minute 30 seconds&#10;&#10;Format: timestamp in M:SS or MM:SS, then comma, then message text; optional third value is an image filename from the images/ folder. If an image is provided, the first comma separates the timestamp and the last comma separates the image; commas in message text are supported."></textarea>
+        </div>
+        <div class="button-group">
+            <button id="startButton" class="start-button">Start</button>
+            <button id="pauseButton" class="pause-button" disabled>Pause</button>
+            <button id="resetButton" class="reset-button" disabled>Reset</button>
+        </div>
+    </div>
+
+    <script>
+        /*
+         * Timed Messages Display - Audio Synchronization Tool
+         * 
+         * This script displays messages at specified timestamps, synchronized with audio playback.
+         * Features:
+         * - CSV input for custom messages and timestamps
+         * - Timer starts at -5 seconds (countdown effect)
+         * - Messages fade in 0.2 seconds before their timestamp
+         * - Pause/Resume functionality
+         * - Fixed 800px container with visible borders
+         * 
+         * Usage:
+         * 1. Enter messages in CSV format: timestamp,message
+         * 2. Click Start to begin timer
+         * 3. Messages appear at their specified timestamps
+         * 4. Use Pause/Resume to control playback
+         * 5. Use Reset to start over
+         */
+
+        // Default messages (used as fallback if CSV is empty)
+        const defaultMessages = [
+        {timestamp: "0:00", message: "First message appears immediately", image: "resize-image1.png"},
+        {timestamp: "0:05", message: "Second message at 5 seconds and has a lot more words than you would expect or even believe", image: "resize-image2.png"},
+        {timestamp: "1:00", message: "Third message at 1 minute"},
+        {timestamp: "1:30", message: "Fourth message at 1 minute 30 seconds"},
+
+        ];
+
+        let messages = defaultMessages;
+
+        const messageDisplay = document.getElementById('messageDisplay');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const csvInput = document.getElementById('csvInput');
+        const startButton = document.getElementById('startButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const resetButton = document.getElementById('resetButton');
+        const imageSlot = document.getElementById('imageSlot');
+        const imageSlotImage = document.getElementById('imageSlotImage');
+        let timeouts = [];
+        let timerInterval = null;
+        let startTime = null;
+        let totalPausedDuration = 0;
+        let pausedTime = null;
+        let isPaused = false;
+
+        // Build textarea default from defaultMessages using commas and HTML newlines (&#10;)
+        function buildCsvLine(entry) {
+            const { timestamp, message, image } = entry;
+            return image ? `${timestamp},${message},${image}` : `${timestamp},${message}`;
+        }
+
+        function setTextareaDefaultFromDefaults() {
+            try {
+                const lines = defaultMessages.map(buildCsvLine);
+                // Use HTML newline entity for placeholder
+                csvInput.placeholder = lines.join("\n");
+            } catch (e) {
+                // No-op if defaultMessages is not available
+            }
+        }
+
+        // Initialize placeholder with defaults
+        setTextareaDefaultFromDefaults();
+
+        function parseTimestamp(timestamp) {
+            // Parse timestamp in format "M:SS" or "MM:SS" (e.g., "0:05" = 5 seconds)
+            const parts = timestamp.split(':');
+            const minutes = parseInt(parts[0], 10);
+            const seconds = parseInt(parts[1], 10);
+            return (minutes * 60 + seconds) * 1000; // Convert to milliseconds
+        }
+
+        /**
+         * Parse CSV data from textarea
+         * Format: timestamp,message (one per line)
+         * Example: "0:05,Hello world" or "1:30,This is a message"
+         * @param {string} csvText - CSV text from textarea
+         * @returns {Array} Array of {timestamp, message} objects
+         */
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            const parsedMessages = [];
+
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (!trimmedLine) continue; // Skip empty lines
+
+                // Find first comma (timestamp separator) and last comma (optional image)
+                const firstCommaIndex = trimmedLine.indexOf(',');
+                if (firstCommaIndex === -1) continue; // Skip lines without comma
+
+                const lastCommaIndex = trimmedLine.lastIndexOf(',');
+
+                const timestamp = trimmedLine.substring(0, firstCommaIndex).trim();
+                let message;
+                let image = null;
+
+                if (lastCommaIndex !== firstCommaIndex) {
+                    // There is an optional third value (image filename)
+                    message = trimmedLine.substring(firstCommaIndex + 1, lastCommaIndex).trim();
+                    const imageCandidate = trimmedLine.substring(lastCommaIndex + 1).trim();
+                    if (imageCandidate) {
+                        image = imageCandidate;
+                    }
+                } else {
+                    // Only timestamp and message
+                    message = trimmedLine.substring(firstCommaIndex + 1).trim();
+                }
+
+                if (timestamp && message) {
+                    parsedMessages.push({ timestamp, message, image });
+                }
+            }
+
+            return parsedMessages;
+        }
+
+        function formatTime(milliseconds) {
+            // Format milliseconds as M:SS or MM:SS, handling negative values
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const absTotalSeconds = Math.abs(totalSeconds);
+            const minutes = Math.floor(absTotalSeconds / 60);
+            const seconds = absTotalSeconds % 60;
+            const sign = totalSeconds < 0 ? '-' : '';
+            return `${sign}${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        function updateTimerDisplay() {
+            if (startTime === null) {
+                timerDisplay.textContent = '-0:05';
+                return;
+            }
+
+            const now = Date.now();
+            let elapsed;
+            
+            if (isPaused) {
+                // If paused, don't count the current pause time
+                elapsed = pausedTime - startTime - totalPausedDuration;
+            } else {
+                // If running, calculate elapsed time accounting for all pauses
+                elapsed = now - startTime - totalPausedDuration;
+            }
+            
+            // Don't clamp at 0, allow negative values to show
+            timerDisplay.textContent = formatTime(elapsed);
+        }
+
+        function startTimerInterval() {
+            // Clear any existing interval
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+            
+            // Update timer every 100ms for smooth display
+            timerInterval = setInterval(updateTimerDisplay, 100);
+        }
+
+        function stopTimerInterval() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function showMessage(messageText, imageFilename) {
+            // Get or create the message-text span
+            let messageTextSpan = messageDisplay.querySelector('.message-text');
+            if (!messageTextSpan) {
+                messageTextSpan = document.createElement('span');
+                messageTextSpan.className = 'message-text';
+                messageDisplay.appendChild(messageTextSpan);
+            }
+            
+            // Fade out
+            messageDisplay.classList.remove('visible');
+            
+            setTimeout(() => {
+                // Update message text
+                messageTextSpan.textContent = messageText;
+                // Handle optional image
+                if (imageFilename) {
+                    showImage(imageFilename);
+                } else {
+                    clearImage();
+                }
+                // Fade in
+                messageDisplay.classList.add('visible');
+            }, 200); // Wait for fade out to complete (matches 0.2s transition)
+        }
+
+        function showImage(filename) {
+            if (!filename) {
+                clearImage();
+                return;
+            }
+            const url = `images/${filename}`;
+            // Load image and toggle visibility based on load success
+            imageSlotImage.onload = () => {
+                imageSlot.classList.add('has-image');
+            };
+            imageSlotImage.onerror = () => {
+                // If the image can't be loaded, clear the slot
+                clearImage();
+            };
+            imageSlotImage.src = url;
+        }
+
+        function clearImage() {
+            imageSlot.classList.remove('has-image');
+            imageSlotImage.removeAttribute('src');
+        }
+
+        function clearAllTimeouts() {
+            timeouts.forEach(timeout => clearTimeout(timeout));
+            timeouts = [];
+        }
+
+        function scheduleMessages() {
+            // Clear any existing timeouts
+            clearAllTimeouts();
+            
+            // Calculate elapsed time (accounting for pauses)
+            const now = Date.now();
+            const elapsed = now - startTime - totalPausedDuration;
+            
+            // Schedule each message to fire at its specific timestamp
+            // Offset by 0.4 seconds so transition starts 0.2s before the timestamp
+            const TRANSITION_OFFSET = 200; // 0.2 seconds in milliseconds
+            
+            messages.forEach(({ message, timestamp, image }) => {
+                const targetDelay = parseTimestamp(timestamp);
+                const remainingDelay = targetDelay - elapsed - TRANSITION_OFFSET;
+                
+                // If the message should show now or has already passed, show it immediately
+                if (remainingDelay <= 0) {
+                    showMessage(message, image);
+                } else {
+                    // Otherwise, schedule it for the remaining delay (with offset)
+                    const timeout = setTimeout(() => {
+                        showMessage(message, image);
+                    }, remainingDelay);
+                    timeouts.push(timeout);
+                }
+            });
+        }
+
+        /**
+         * Start the timer and message display
+         * - Parses CSV from textarea (or uses default messages)
+         * - Timer starts at -5 seconds (countdown effect)
+         * - Schedules all messages at their specified timestamps
+         * - Begins timer display updates
+         */
+        function startMessages() {
+            // Parse CSV from textbox and update messages
+            const csvText = csvInput.value.trim();
+            if (csvText) {
+                const parsedMessages = parseCSV(csvText);
+                if (parsedMessages.length > 0) {
+                    messages = parsedMessages;
+                } else {
+                    // If parsing failed, use default messages
+                    messages = defaultMessages;
+                }
+            } else {
+                // If textbox is empty, use default messages
+                messages = defaultMessages;
+            }
+            
+            // Initialize start time and reset pause state
+            // Offset by 5 seconds so timer starts at -0:05
+            startTime = Date.now() + 5000;
+            totalPausedDuration = 0;
+            isPaused = false;
+            
+            // Disable start button and textbox, enable pause and reset buttons
+            startButton.disabled = true;
+            csvInput.disabled = true;
+            pauseButton.disabled = false;
+            resetButton.disabled = false;
+            pauseButton.textContent = 'Pause';
+            
+            // Start timer display updates
+            startTimerInterval();
+            updateTimerDisplay();
+            
+            // Schedule messages
+            scheduleMessages();
+        }
+
+        function pauseOrResumeMessages() {
+            if (isPaused) {
+                // Resume: calculate pause duration and reschedule
+                const pauseDuration = Date.now() - pausedTime;
+                totalPausedDuration += pauseDuration;
+                pausedTime = null;
+                isPaused = false;
+                pauseButton.textContent = 'Pause';
+                
+                // Update timer display immediately
+                updateTimerDisplay();
+                
+                // Reschedule messages with adjusted timing
+                scheduleMessages();
+            } else {
+                // Pause: clear timeouts and record pause time
+                clearAllTimeouts();
+                pausedTime = Date.now();
+                isPaused = true;
+                pauseButton.textContent = 'Resume';
+                
+                // Update timer display to show paused time
+                updateTimerDisplay();
+            }
+        }
+
+        function resetMessages() {
+            // Clear all scheduled messages
+            clearAllTimeouts();
+            
+            // Stop timer interval
+            stopTimerInterval();
+            
+            // Reset state
+            startTime = null;
+            totalPausedDuration = 0;
+            pausedTime = null;
+            isPaused = false;
+            
+            // Reset timer display
+            timerDisplay.textContent = '-0:05';
+            
+            // Clear the message display but maintain space
+            messageDisplay.classList.remove('visible');
+            clearImage();
+            setTimeout(() => {
+                // Get or create the message-text span
+                let messageTextSpan = messageDisplay.querySelector('.message-text');
+                if (!messageTextSpan) {
+                    messageTextSpan = document.createElement('span');
+                    messageTextSpan.className = 'message-text';
+                    messageDisplay.appendChild(messageTextSpan);
+                }
+                messageTextSpan.textContent = '\u00a0'; // Non-breaking space to maintain height
+            }, 500);
+            
+            // Enable start button and textbox, disable pause and reset buttons
+            startButton.disabled = false;
+            csvInput.disabled = false;
+            pauseButton.disabled = true;
+            resetButton.disabled = true;
+            pauseButton.textContent = 'Pause';
+        }
+
+        // Add click event listeners
+        startButton.addEventListener('click', startMessages);
+        pauseButton.addEventListener('click', pauseOrResumeMessages);
+        resetButton.addEventListener('click', resetMessages);
+    </script>
+</body>
+</html>
