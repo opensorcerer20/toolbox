@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Markdown to HTML</title>
+	<style>
+		:root {
+			color-scheme: light dark;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		}
+
+		body {
+			margin: 0;
+			padding: 24px;
+			min-height: 100vh;
+			box-sizing: border-box;
+			background: Canvas;
+			color: CanvasText;
+		}
+
+		h1 {
+			margin: 0 0 16px;
+			font-size: 1.4rem;
+		}
+
+		.container {
+			display: grid;
+			gap: 16px;
+			max-width: 1100px;
+			margin: 0 auto;
+		}
+
+		.box {
+			width: 100%;
+			min-height: 38vh;
+			resize: vertical;
+			box-sizing: border-box;
+			padding: 14px;
+			border: 1px solid color-mix(in srgb, CanvasText 35%, transparent);
+			border-radius: 10px;
+			background: color-mix(in srgb, Canvas 92%, CanvasText 8%);
+			color: CanvasText;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+			font-size: 0.95rem;
+			line-height: 1.5;
+		}
+
+		.preview-box {
+			height: 38vh;
+			resize: vertical;
+			box-sizing: border-box;
+			padding: 14px;
+			border: 1px solid color-mix(in srgb, CanvasText 35%, transparent);
+			border-radius: 10px;
+			background: color-mix(in srgb, Canvas 92%, CanvasText 8%);
+			color: CanvasText;
+			overflow-y: auto;
+			overflow-x: hidden;
+			white-space: normal;
+			overflow-wrap: anywhere;
+			word-break: break-word;
+		}
+
+		.preview-box > :first-child {
+			margin-top: 0;
+		}
+
+		.preview-box > :last-child {
+			margin-bottom: 0;
+		}
+
+		.box:focus {
+			outline: 2px solid Highlight;
+			outline-offset: 1px;
+		}
+
+		label {
+			font-weight: 600;
+			display: block;
+			margin-bottom: 8px;
+		}
+	</style>
+	<script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+	<main class="container">
+		<h1>Markdown to HTML Converter</h1>
+
+		<section>
+			<label for="markdownInput">Markdown input</label>
+			<textarea id="markdownInput" class="box" placeholder="# Paste Markdown here"></textarea>
+		</section>
+
+		<section>
+			<label for="htmlPreview">HTML preview</label>
+			<div id="htmlPreview" class="preview-box" aria-live="polite"></div>
+		</section>
+
+		<section>
+			<label for="htmlOutput">HTML output</label>
+			<textarea id="htmlOutput" class="box" readonly placeholder="Converted HTML appears here"></textarea>
+		</section>
+	</main>
+
+	<script>
+		const markdownInput = document.getElementById('markdownInput');
+		const htmlPreview = document.getElementById('htmlPreview');
+		const htmlOutput = document.getElementById('htmlOutput');
+
+		function convertMarkdown() {
+			const source = markdownInput.value;
+
+			if (window.marked && typeof window.marked.parse === 'function') {
+				const renderedHtml = window.marked.parse(source);
+				htmlOutput.value = renderedHtml;
+				htmlPreview.innerHTML = renderedHtml;
+			} else {
+				htmlOutput.value = source;
+				htmlPreview.textContent = source;
+			}
+		}
+
+		markdownInput.addEventListener('input', convertMarkdown);
+		convertMarkdown();
+	</script>
+</body>
+</html>
