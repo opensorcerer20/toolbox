@@ -80,6 +80,15 @@
 			display: block;
 			margin-bottom: 8px;
 		}
+
+		input[type='file'] {
+			padding: 8px;
+			border: 1px solid color-mix(in srgb, CanvasText 35%, transparent);
+			border-radius: 6px;
+			background: color-mix(in srgb, Canvas 92%, CanvasText 8%);
+			color: CanvasText;
+			cursor: pointer;
+		}
 	</style>
 	<script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -89,6 +98,10 @@
 
 		<section>
 			<label for="markdownInput">Markdown input</label>
+			<div style="margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;">
+				<input type="file" id="markdownFile" accept=".md,.markdown,text/markdown" />
+				<button id="clearButton" style="padding: 8px 12px; border: 1px solid color-mix(in srgb, CanvasText 35%, transparent); border-radius: 6px; background: color-mix(in srgb, Canvas 92%, CanvasText 8%); color: CanvasText; cursor: pointer; font-weight: 500;">Clear Markdown</button>
+			</div>
 			<textarea id="markdownInput" class="box" placeholder="# Paste Markdown here"></textarea>
 		</section>
 
@@ -105,11 +118,16 @@
 
 	<script>
 		const markdownInput = document.getElementById('markdownInput');
+		const markdownFile = document.getElementById('markdownFile');
+		const clearButton = document.getElementById('clearButton');
 		const htmlPreview = document.getElementById('htmlPreview');
 		const htmlOutput = document.getElementById('htmlOutput');
 
 		function convertMarkdown() {
-			const source = markdownInput.value;
+			// Replace every single line feed with '  \n' to force <br> on every line
+			let source = markdownInput.value;
+			// Only replace single line feeds, not double (paragraphs)
+			source = source.replace(/([^\n])\n(?!\n)/g, '$1  \n');
 
 			if (window.marked && typeof window.marked.parse === 'function') {
 				const renderedHtml = window.marked.parse(source);
@@ -122,6 +140,26 @@
 		}
 
 		markdownInput.addEventListener('input', convertMarkdown);
+
+		// Handle markdown file upload
+		markdownFile.addEventListener('change', function(event) {
+			const file = event.target.files[0];
+			if (file) {
+				const reader = new FileReader();
+				reader.onload = function(e) {
+					markdownInput.value = e.target.result;
+					convertMarkdown();
+				};
+				reader.readAsText(file);
+			}
+		});
+
+		// Handle clear button
+		clearButton.addEventListener('click', function() {
+			markdownInput.value = '';
+			convertMarkdown();
+		});
+
 		convertMarkdown();
 	</script>
 </body>
