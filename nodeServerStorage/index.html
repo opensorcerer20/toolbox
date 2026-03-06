@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Value Pair Logger</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="app-header">
+        <h1>Value Pair Logger</h1>
+        <p class="subtitle">
+          Submit simple <code>{ name, value }</code> pairs to the Node server.
+        </p>
+      </header>
+
+      <main class="content" aria-label="Submit name/value pairs">
+        <form id="value-form" class="value-form">
+          <div class="field">
+            <label for="name-input" class="field-label">Name</label>
+            <input
+              id="name-input"
+              class="field-input"
+              name="name"
+              type="text"
+              autocomplete="off"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="value-input" class="field-label">Value</label>
+            <input
+              id="value-input"
+              class="field-input"
+              name="value"
+              type="text"
+              autocomplete="off"
+            />
+          </div>
+
+          <button type="submit" class="submit-button">Send to server</button>
+        </form>
+
+        <section
+          id="response"
+          class="response"
+          aria-live="polite"
+          aria-atomic="true"
+        ></section>
+      </main>
+    </div>
+
+    <script src="app.js" defer></script>
+  </body>
+  </html>
+
