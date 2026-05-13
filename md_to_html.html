@@ -130,7 +130,9 @@
 			source = source.replace(/([^\n])\n(?!\n)/g, '$1  \n');
 
 			if (window.marked && typeof window.marked.parse === 'function') {
-				const renderedHtml = window.marked.parse(source);
+				let renderedHtml = window.marked.parse(source);
+				// Remove disabled="" attribute from checkboxes to make them interactive
+				renderedHtml = renderedHtml.replace(/\s+disabled=""/g, '');
 				htmlOutput.value = renderedHtml;
 				htmlPreview.innerHTML = renderedHtml;
 			} else {
