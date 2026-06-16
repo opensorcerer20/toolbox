@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Toolbox Board</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: #b8c4d8;
+      margin-bottom: 2rem;
+      letter-spacing: 0.05em;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 1.5rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .left-col {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .panel {
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .panel h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #a8b4d4;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /* --- Shared input row --- */
+    .add-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .add-row input {
+      flex: 1;
+      background: #13151f;
+      border: 1px solid #2d3148;
+      border-radius: 8px;
+      color: #e2e8f0;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .add-row input:focus { border-color: #6366f1; }
+
+    .add-row input::placeholder { color: #7e8aab; }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 0.45rem 0.85rem;
+      transition: opacity 0.15s;
+    }
+
+    button:hover { opacity: 0.85; }
+
+    .btn-add { background: #6366f1; color: #fff; }
+    .btn-del  { background: transparent; color: #7e8aab; padding: 0.2rem 0.45rem; font-size: 1rem; }
+    .btn-del:hover { color: #f87171; opacity: 1; }
+
+    /* --- To-do list --- */
+    #todo-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+
+    #todo-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: #13151f;
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+    }
+
+    #todo-list li input[type="checkbox"] { accent-color: #6366f1; width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
+
+    #todo-list li .todo-text {
+      flex: 1;
+      font-size: 0.9rem;
+      word-break: break-word;
+    }
+
+    #todo-list li.done .todo-text {
+      text-decoration: line-through;
+      color: #7e8aab;
+    }
+
+    /* --- Habit tracker --- */
+    #habit-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+
+    #habit-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: #13151f;
+      border-radius: 8px;
+      padding: 0.5rem 0.75rem;
+    }
+
+    #habit-list li .habit-name {
+      flex: 1;
+      font-size: 0.9rem;
+      word-break: break-word;
+    }
+
+    .habit-count {
+      font-size: 0.85rem;
+      color: #b8c4d8;
+      min-width: 2.2rem;
+      text-align: right;
+    }
+
+    .btn-habit-log {
+      background: #1e4d2b;
+      color: #4ade80;
+      padding: 0.3rem 0.65rem;
+      font-size: 0.8rem;
+    }
+
+    .btn-habit-log.done-today {
+      background: #14532d;
+      color: #166534;
+      cursor: default;
+      opacity: 0.6;
+    }
+
+    .btn-habit-log.done-today:hover { opacity: 0.6; }
+
+    /* --- Multi-step tasks --- */
+    #step-list { list-style: none; display: flex; flex-direction: column; gap: 0.75rem; }
+
+    #step-list li {
+      background: #13151f;
+      border-radius: 8px;
+      padding: 0.65rem 0.75rem;
+    }
+
+    .step-task-name {
+      font-size: 1rem;
+      color: #a8b4d4;
+      margin-bottom: 0.35rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .step-progress {
+      font-size: 0.9rem;
+      color: #7e8aab;
+    }
+
+    .step-current {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .step-current input[type="checkbox"] {
+      accent-color: #6366f1;
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      cursor: pointer;
+      margin-left: 20px;
+    }
+
+    .step-current-text { font-size: 1.05rem; word-break: break-word; }
+
+    .step-done-label {
+      font-size: 1rem;
+      color: #4ade80;
+    }
+
+    .btn-expand {
+      background: transparent;
+      color: #a8b4d4;
+      padding: 0 0.3rem;
+      font-size: 0.75rem;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+
+    .btn-expand:hover { color: #e2e8f0; opacity: 1; }
+
+    .step-all-steps {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .step-row {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.25rem 0;
+    }
+
+    .step-row.past-step { color: #7e8aab; text-decoration: line-through; font-size: 1rem; }
+    .step-row.current-step { font-size: 1.05rem; }
+    .step-row.current-step input[type="checkbox"] { margin-left: 20px; }
+    .step-row.future-step { color: #7e8aab; font-size: 1rem; padding-left: 20px; }
+
+    /* step add modal inline */
+    .step-add-steps {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .step-add-steps .step-input-row {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    .step-add-steps input {
+      flex: 1;
+      background: #1e2130;
+      border: 1px solid #2d3148;
+      border-radius: 6px;
+      color: #e2e8f0;
+      padding: 0.35rem 0.6rem;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .step-add-steps input:focus { border-color: #6366f1; }
+
+    .btn-add-step-field { background: #2d3148; color: #b8c4d8; padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+    .btn-confirm-task   { background: #6366f1; color: #fff; padding: 0.4rem 0.8rem; font-size: 0.85rem; align-self: flex-start; }
+
+    .empty-msg { color: #7e8aab; font-size: 0.85rem; text-align: center; padding: 0.5rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Toolbox Board</h1>
+  <div class="board">
+
+    <div class="left-col">
+      <!-- ===== TO-DO LIST ===== -->
+      <div class="panel">
+        <h2>To-Do</h2>
+        <div class="add-row">
+          <input id="todo-input" type="text" placeholder="New task…" />
+          <button class="btn-add" onclick="addTodo()">Add</button>
+        </div>
+        <ul id="todo-list"></ul>
+      </div>
+
+      <!-- ===== HABIT TRACKER ===== -->
+      <div class="panel">
+        <h2>Daily Habits</h2>
+        <div class="add-row">
+          <input id="habit-input" type="text" placeholder="New habit…" />
+          <button class="btn-add" onclick="addHabit()">Add</button>
+        </div>
+        <ul id="habit-list"></ul>
+      </div>
+    </div>
+
+    <!-- ===== MULTI-STEP TASKS ===== -->
+    <div class="panel">
+      <h2>Step-by-Step</h2>
+      <div id="step-builder">
+        <div class="add-row">
+          <input id="step-task-input" type="text" placeholder="Task name…" />
+        </div>
+        <div class="step-add-steps" id="step-fields">
+          <div class="step-input-row">
+            <input type="text" placeholder="Step 1…" />
+            <button class="btn-del" onclick="removeStepField(this)">✕</button>
+          </div>
+        </div>
+        <div class="step-add-steps" style="margin-top:0.5rem; flex-direction: row; gap:0.5rem;">
+          <button class="btn-add-step-field" onclick="addStepField()">+ Step</button>
+          <button class="btn-confirm-task" onclick="addStepTask()">Add Task</button>
+        </div>
+      </div>
+      <ul id="step-list"></ul>
+    </div>
+
+  </div>
+
+  <script>
+    // ─── Utility ──────────────────────────────────────────────────────────────
+    const todayStr = () => new Date().toISOString().slice(0, 10);
+
+    function load(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+      catch { return fallback; }
+    }
+
+    function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+    // ─── TO-DO LIST ───────────────────────────────────────────────────────────
+    let todos = load('todos', []);
+    // [{id, text, done}]
+
+    function saveTodos() { save('todos', todos); }
+
+    function renderTodos() {
+      const ul = document.getElementById('todo-list');
+      ul.innerHTML = '';
+      if (!todos.length) { ul.innerHTML = '<li class="empty-msg">No tasks yet.</li>'; return; }
+      todos.forEach((t, i) => {
+        const li = document.createElement('li');
+        if (t.done) li.classList.add('done');
+        li.innerHTML = `
+          <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" />
+          <span class="todo-text">${escHtml(t.text)}</span>
+          <button class="btn-del" onclick="deleteTodo(${i})">✕</button>
+        `;
+        ul.appendChild(li);
+      });
+    }
+
+    function addTodo() {
+      const inp = document.getElementById('todo-input');
+      const text = inp.value.trim();
+      if (!text) return;
+      todos.push({ id: Date.now(), text, done: false });
+      saveTodos();
+      renderTodos();
+      inp.value = '';
+    }
+
+    function toggleTodo(i) {
+      todos[i].done = !todos[i].done;
+      saveTodos();
+      renderTodos();
+    }
+
+    function deleteTodo(i) {
+      todos.splice(i, 1);
+      saveTodos();
+      renderTodos();
+    }
+
+    document.getElementById('todo-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
+
+    // ─── HABIT TRACKER ────────────────────────────────────────────────────────
+    let habits = load('habits', []);
+    // [{id, name, logs: ['YYYY-MM-DD', ...]}]
+
+    function saveHabits() { save('habits', habits); }
+
+    function renderHabits() {
+      const ul = document.getElementById('habit-list');
+      ul.innerHTML = '';
+      if (!habits.length) { ul.innerHTML = '<li class="empty-msg">No habits yet.</li>'; return; }
+      const today = todayStr();
+      habits.forEach((h, i) => {
+        const loggedToday = h.logs.includes(today);
+        const total = h.logs.length;
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span class="habit-name">${escHtml(h.name)}</span>
+          <span class="habit-count">${total}×</span>
+          <button class="btn-habit-log ${loggedToday ? 'done-today' : ''}"
+            onclick="${loggedToday ? '' : `logHabit(${i})`}"
+            ${loggedToday ? 'disabled' : ''}>
+            ${loggedToday ? '✓ Done' : 'Log'}
+          </button>
+          <button class="btn-del" onclick="deleteHabit(${i})">✕</button>
+        `;
+        ul.appendChild(li);
+      });
+    }
+
+    function addHabit() {
+      const inp = document.getElementById('habit-input');
+      const name = inp.value.trim();
+      if (!name) return;
+      habits.push({ id: Date.now(), name, logs: [] });
+      saveHabits();
+      renderHabits();
+      inp.value = '';
+    }
+
+    function logHabit(i) {
+      const today = todayStr();
+      if (!habits[i].logs.includes(today)) habits[i].logs.push(today);
+      saveHabits();
+      renderHabits();
+    }
+
+    function deleteHabit(i) {
+      habits.splice(i, 1);
+      saveHabits();
+      renderHabits();
+    }
+
+    document.getElementById('habit-input').addEventListener('keydown', e => { if (e.key === 'Enter') addHabit(); });
+
+    // ─── MULTI-STEP TASKS ─────────────────────────────────────────────────────
+    let stepTasks = load('stepTasks', []);
+    // [{id, name, steps: ['...'], current: 0}]  current = index of active step
+
+    const expandedSteps = new Set(); // tracks which task indices are expanded (session-only)
+
+    function saveStepTasks() { save('stepTasks', stepTasks); }
+
+    function toggleExpand(ti) {
+      if (expandedSteps.has(ti)) expandedSteps.delete(ti);
+      else expandedSteps.add(ti);
+      renderStepTasks();
+    }
+
+    function renderStepTasks() {
+      const ul = document.getElementById('step-list');
+      ul.innerHTML = '';
+      if (!stepTasks.length) { ul.innerHTML = '<li class="empty-msg">No step tasks yet.</li>'; return; }
+      stepTasks.forEach((task, ti) => {
+        const done = task.current >= task.steps.length;
+        const expanded = expandedSteps.has(ti);
+        const progress = `${Math.min(task.current, task.steps.length)}/${task.steps.length}`;
+        const arrow = expanded ? '▼' : '▶';
+
+        let stepsHtml;
+        if (expanded) {
+          stepsHtml = `<div class="step-all-steps">` +
+            task.steps.map((s, si) => {
+              if (si < task.current) {
+                return `<div class="step-row past-step">${escHtml(s)}</div>`;
+              } else if (si === task.current && !done) {
+                return `<div class="step-row current-step">
+                   <input type="checkbox" onchange="advanceStep(${ti})" />
+                   <span class="step-current-text">${escHtml(s)}</span>
+                 </div>`;
+              } else {
+                return `<div class="step-row future-step">${escHtml(s)}</div>`;
+              }
+            }).join('') +
+            (done ? `<div class="step-row"><span class="step-done-label">✓ All steps complete!</span></div>` : '') +
+          `</div>`;
+        } else {
+          stepsHtml = `<div class="step-current">
+            ${done
+              ? `<span class="step-done-label">✓ All steps complete!</span>`
+              : `<input type="checkbox" onchange="advanceStep(${ti})" />
+                 <span class="step-current-text">${escHtml(task.steps[task.current])}</span>`
+            }
+          </div>`;
+        }
+
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <div class="step-task-name">
+            <span style="display:flex;align-items:center;gap:0.4rem;">
+              <button class="btn-expand" onclick="toggleExpand(${ti})" title="Expand steps">${arrow}</button>
+              ${escHtml(task.name)}
+            </span>
+            <span style="display:flex;gap:0.5rem;align-items:center;">
+              <span class="step-progress">${progress}</span>
+              <button class="btn-del" onclick="deleteStepTask(${ti})">✕</button>
+            </span>
+          </div>
+          ${stepsHtml}
+        `;
+        ul.appendChild(li);
+      });
+    }
+
+    function addStepField() {
+      const container = document.getElementById('step-fields');
+      const count = container.querySelectorAll('.step-input-row').length + 1;
+      const row = document.createElement('div');
+      row.className = 'step-input-row';
+      row.innerHTML = `
+        <input type="text" placeholder="Step ${count}…" />
+        <button class="btn-del" onclick="removeStepField(this)">✕</button>
+      `;
+      container.appendChild(row);
+    }
+
+    function removeStepField(btn) {
+      const container = document.getElementById('step-fields');
+      if (container.querySelectorAll('.step-input-row').length <= 1) return;
+      btn.closest('.step-input-row').remove();
+    }
+
+    function addStepTask() {
+      const name = document.getElementById('step-task-input').value.trim();
+      if (!name) return;
+      const inputs = document.querySelectorAll('#step-fields input');
+      const steps = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+      if (!steps.length) return;
+      stepTasks.push({ id: Date.now(), name, steps, current: 0 });
+      saveStepTasks();
+      renderStepTasks();
+      // reset builder
+      document.getElementById('step-task-input').value = '';
+      const container = document.getElementById('step-fields');
+      container.innerHTML = `
+        <div class="step-input-row">
+          <input type="text" placeholder="Step 1…" />
+          <button class="btn-del" onclick="removeStepField(this)">✕</button>
+        </div>
+      `;
+    }
+
+    function advanceStep(ti) {
+      stepTasks[ti].current += 1;
+      saveStepTasks();
+      renderStepTasks();
+    }
+
+    function deleteStepTask(ti) {
+      stepTasks.splice(ti, 1);
+      saveStepTasks();
+      renderStepTasks();
+    }
+
+    // ─── XSS helper ──────────────────────────────────────────────────────────
+    function escHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────────
+    renderTodos();
+    renderHabits();
+    renderStepTasks();
+    setTimeout(() => location.reload(), 10 * 60 * 1000);
+  </script>
+</body>
+</html>

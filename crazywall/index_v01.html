@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crazywall</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #c2c2d8;
+      background-image:
+        radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0);
+      background-size: 32px 32px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #toolbar {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(3, 3, 3, 0.4);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(4, 4, 4, 0.4);
+      border-radius: 32px;
+      padding: 8px 16px;
+    }
+
+    #toolbar span {
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    #add-note {
+      background: #7c6af7;
+      color: #fff;
+      border: 1px solid #fff;
+      border-radius: 20px;
+      padding: 7px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+
+    #add-note:hover { background: #6a58e0; }
+    #add-note:active { transform: scale(0.96); }
+
+    #board {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .note {
+      position: absolute;
+      width: 260px;
+      min-height: 180px;
+      background: #fffde7;
+      border-radius: 6px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 1px 3px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    .note:focus-within {
+      box-shadow: 0 6px 28px rgba(0,0,0,0.45), 0 0 0 2px #7c6af7;
+    }
+
+    .note-titlebar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px 0 6px;
+      height: 34px;
+      background: rgba(0,0,0,0.07);
+      border-radius: 6px 6px 0 0;
+      cursor: default;
+      flex-shrink: 0;
+    }
+
+    .note-drag-handle {
+      width: 40px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: grab;
+      color: rgba(61,48,0,0.4);
+      border-right: 1px solid rgba(0,0,0,0.2);
+      transition: color 0.1s;
+      user-select: none;
+    }
+
+    .note-drag-handle:hover { color: rgba(61,48,0,0.7); }
+    .note-drag-handle:active { cursor: grabbing; }
+
+    .note-title {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 700;
+      color: #3d3000;
+      outline: none;
+      cursor: text;
+      min-width: 0;
+      padding: 0;
+    }
+
+    .note-title::placeholder { color: rgba(61,48,0,0.35); }
+
+    .note-delete {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0,0,0,0.15);
+      color: rgba(61,48,0,0.6);
+      font-size: 13px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
+      transition: background 0.1s, color 0.1s;
+    }
+
+    .note-delete:hover { background: #e53935; color: #fff; }
+
+    .note-body {
+      flex: 1;
+      border: none;
+      background: transparent;
+      resize: none;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #3d3000;
+      outline: none;
+      cursor: text;
+      min-height: 100px;
+    }
+
+    .note-body::placeholder { color: rgba(61,48,0,0.35); }
+  </style>
+</head>
+<body>
+
+<div id="toolbar">
+  <span>Crazywall</span>
+  <button id="add-note">+ New note</button>
+</div>
+
+<div id="board"></div>
+
+<script>
+  const board = document.getElementById('board');
+  const STORAGE_KEY = 'crazywall_notes';
+
+  function loadNotes() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function saveNotes() {
+    const data = [...document.querySelectorAll('.note')].map(el => ({
+      id: el.dataset.id,
+      x: parseInt(el.style.left),
+      y: parseInt(el.style.top),
+      title: el.querySelector('.note-title').value,
+      body: el.querySelector('.note-body').value,
+    }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function createNote({ id, x, y, title = '', body = '' } = {}) {
+    const noteId = id || crypto.randomUUID();
+    const el = document.createElement('div');
+    el.className = 'note';
+    el.dataset.id = noteId;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.zIndex = nextZ();
+
+    el.innerHTML = `
+      <div class="note-titlebar">
+        <span class="note-drag-handle" title="Drag to move">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11 5a1 1 0 1 1 2 0v6h1V7a1 1 0 1 1 2 0v4h1V9a1 1 0 1 1 2 0v5a6 6 0 0 1-6 6H9a5 5 0 0 1-5-5v-3a1 1 0 1 1 2 0v2h1V6a1 1 0 1 1 2 0v5h1V5z"/>
+          </svg>
+        </span>
+        <input class="note-title" type="text" placeholder="Title" value="${escHtml(title)}">
+        <button class="note-delete" title="Delete note">✕</button>
+      </div>
+      <textarea class="note-body" placeholder="Write something…">${escHtml(body)}</textarea>
+    `;
+
+    makeDraggable(el);
+
+    el.querySelector('.note-delete').addEventListener('click', () => {
+      if (!confirm('Delete this note?')) return;
+      el.remove();
+      saveNotes();
+    });
+
+    el.querySelector('.note-title').addEventListener('input', saveNotes);
+    el.querySelector('.note-body').addEventListener('input', saveNotes);
+
+    el.addEventListener('pointerdown', () => {
+      el.style.zIndex = nextZ();
+    });
+
+    board.appendChild(el);
+    return el;
+  }
+
+  let zCounter = 10;
+  function nextZ() { return ++zCounter; }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function makeDraggable(el) {
+    const handle = el.querySelector('.note-drag-handle');
+    let dragging = false, ox = 0, oy = 0;
+
+    handle.addEventListener('pointerdown', e => {
+      dragging = true;
+      ox = e.clientX - el.offsetLeft;
+      oy = e.clientY - el.offsetTop;
+      handle.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+
+    handle.addEventListener('pointermove', e => {
+      if (!dragging) return;
+      const x = Math.max(0, Math.min(e.clientX - ox, window.innerWidth - el.offsetWidth));
+      const y = Math.max(0, Math.min(e.clientY - oy, window.innerHeight - el.offsetHeight));
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+    });
+
+    handle.addEventListener('pointerup', () => {
+      if (!dragging) return;
+      dragging = false;
+      saveNotes();
+    });
+  }
+
+  document.getElementById('add-note').addEventListener('click', () => {
+    const margin = 60;
+    const x = margin + Math.random() * (window.innerWidth - 260 - margin * 2);
+    const y = margin + Math.random() * (window.innerHeight - 220 - margin * 2);
+    const note = createNote({ x: Math.round(x), y: Math.round(y) });
+    note.querySelector('.note-title').focus();
+    saveNotes();
+  });
+
+  loadNotes().forEach(createNote);
+</script>
+</body>
+</html>
