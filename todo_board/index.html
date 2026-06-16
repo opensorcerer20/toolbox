@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Toolbox Board</title>
+  <title>To Do Board</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -265,10 +265,33 @@
     .btn-confirm-task   { background: #6366f1; color: #fff; padding: 0.4rem 0.8rem; font-size: 0.85rem; align-self: flex-start; }
 
     .empty-msg { color: #7e8aab; font-size: 0.85rem; text-align: center; padding: 0.5rem 0; }
+
+    .btn-download {
+      display: block;
+      margin: -1rem auto 2rem;
+      background: #2d3148;
+      color: #b8c4d8;
+      border: 1px solid #3d4460;
+      border-radius: 8px;
+      padding: 0.4rem 1.1rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .btn-download:hover { background: #363c5a; opacity: 1; }
+
+    .tagline {
+      text-align: center;
+      color: #b8c4d8;
+      font-size: 3.2rem;
+      margin: -1rem auto 2rem;
+    }
   </style>
 </head>
 <body>
-  <h1>Toolbox Board</h1>
+  <h1>To Do Board</h1>
+  <button class="btn-download" onclick="downloadData()">Download JSON</button>
+  <p class="tagline">"Do just one thing today, that's it"</p>
   <div class="board">
 
     <div class="left-col">
@@ -549,6 +572,17 @@
     // ─── XSS helper ──────────────────────────────────────────────────────────
     function escHtml(s) {
       return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ─── Download ─────────────────────────────────────────────────────────────
+    function downloadData() {
+      const data = { todos, habits, stepTasks, exportedAt: new Date().toISOString() };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `todo-board-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
     }
 
     // ─── Init ─────────────────────────────────────────────────────────────────
