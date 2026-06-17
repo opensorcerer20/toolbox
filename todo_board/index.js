@@ -148,14 +148,14 @@ function renderStepTasks() {
       stepsHtml = `<div class="step-all-steps">` +
         task.steps.map((s, si) => {
           if (si < task.current) {
-            return `<div class="step-row past-step">${escHtml(s)}</div>`;
+            return `<div class="step-row past-step">${escHtml(s.text)}</div>`;
           } else if (si === task.current && !done) {
             return `<div class="step-row current-step">
                <input type="checkbox" onchange="advanceStep(${ti})" />
-               <span class="step-current-text">${escHtml(s)}</span>
+               <span class="step-current-text">${escHtml(s.text)}</span>
              </div>`;
           } else {
-            return `<div class="step-row future-step">${escHtml(s)}</div>`;
+            return `<div class="step-row future-step">${escHtml(s.text)}</div>`;
           }
         }).join('') +
         (done ? `<div class="step-row"><span class="step-done-label">✓ All steps complete!</span></div>` : '') +
@@ -165,7 +165,7 @@ function renderStepTasks() {
         ${done
           ? `<span class="step-done-label">✓ All steps complete!</span>`
           : `<input type="checkbox" onchange="advanceStep(${ti})" />
-             <span class="step-current-text">${escHtml(task.steps[task.current])}</span>`
+             <span class="step-current-text">${escHtml(task.steps[task.current].text)}</span>`
         }
       </div>`;
     }
@@ -210,7 +210,7 @@ function addStepTask() {
   const name = document.getElementById('step-task-input').value.trim();
   if (!name) return;
   const steps = Array.from(document.querySelectorAll('#step-fields input'))
-    .map(i => i.value.trim()).filter(Boolean);
+    .map(i => i.value.trim()).filter(Boolean).map(text => ({ text, starred: false }));
   if (!steps.length) return;
   stepTasks.push({ id: Date.now(), name, steps, current: 0 });
   saveStepTasks();
@@ -245,14 +245,22 @@ function renderCategoryColumn() {
   nightList.innerHTML = '';
 
   const items = [
-    ...todos.filter(t => !t.done).map(t => ({ label: t.text,  category: t.category  || 'day' })),
-    ...habits.map(h =>                    ({ label: h.name,   category: h.category  || 'day' })),
+    ...todos.filter(t => !t.done).map(t => ({ label: t.text, category: t.category || 'day', starred: !!t.starred })),
+    ...habits.map(h =>                    ({ label: h.name,  category: h.category || 'day', starred: !!h.starred })),
   ];
 
-  items.forEach(({ label, category }) => {
+  items.sort((a, b) => b.starred - a.starred);
+
+  items.forEach(({ label, category, starred }) => {
     const li = document.createElement('li');
-    li.textContent = label;
     li.className = `cat-${category}`;
+    if (starred) {
+      const star = document.createElement('span');
+      star.className = 'cat-star';
+      star.textContent = '★';
+      li.appendChild(star);
+    }
+    li.appendChild(document.createTextNode(label));
     (category === 'day' ? dayList : nightList).appendChild(li);
   });
 
@@ -269,9 +277,19 @@ function openEditModal(type, index) {
   const inp = document.getElementById('modal-input');
   inp.value = type === 'todo' ? item.text : item.name;
   document.getElementById('modal-category').value = item.category || 'night';
+  const starBtn = document.getElementById('modal-star');
+  starBtn.classList.toggle('starred', !!item.starred);
+  starBtn.textContent = item.starred ? '★' : '☆';
   document.getElementById('edit-modal').classList.remove('hidden');
   inp.focus();
   inp.select();
+}
+
+function toggleModalStar() {
+  const btn = document.getElementById('modal-star');
+  const nowStarred = !btn.classList.contains('starred');
+  btn.classList.toggle('starred', nowStarred);
+  btn.textContent = nowStarred ? '★' : '☆';
 }
 
 function closeEditModal() {
@@ -284,14 +302,17 @@ function saveEdit() {
   const val = document.getElementById('modal-input').value.trim();
   if (!val) return;
   const category = document.getElementById('modal-category').value;
+  const starred = document.getElementById('modal-star').classList.contains('starred');
   if (editTarget.type === 'todo') {
     todos[editTarget.index].text = val;
     todos[editTarget.index].category = category;
+    todos[editTarget.index].starred = starred;
     saveTodos();
     renderTodos();
   } else {
     habits[editTarget.index].name = val;
     habits[editTarget.index].category = category;
+    habits[editTarget.index].starred = starred;
     saveHabits();
     renderHabits();
   }
@@ -335,18 +356,31 @@ function migrate() {
   stepTasks = load('todoboard_stepTasks', []);
 
   const todoChanged = todos.reduce((changed, t) => {
-    if (CATEGORY_MAP[t.category]) { t.category = CATEGORY_MAP[t.category]; return true; }
-    if (!t.category) { t.category = 'day'; return true; }
-    return changed;
+    let c = changed;
+    if (CATEGORY_MAP[t.category]) { t.category = CATEGORY_MAP[t.category]; c = true; }
+    if (!t.category) { t.category = 'day'; c = true; }
+    if (!('starred' in t)) { t.starred = false; c = true; }
+    return c;
   }, false);
   if (todoChanged) saveTodos();
 
   const habitChanged = habits.reduce((changed, h) => {
-    if (CATEGORY_MAP[h.category]) { h.category = CATEGORY_MAP[h.category]; return true; }
-    if (!h.category) { h.category = 'day'; return true; }
-    return changed;
+    let c = changed;
+    if (CATEGORY_MAP[h.category]) { h.category = CATEGORY_MAP[h.category]; c = true; }
+    if (!h.category) { h.category = 'day'; c = true; }
+    if (!('starred' in h)) { h.starred = false; c = true; }
+    return c;
   }, false);
   if (habitChanged) saveHabits();
+
+  const stepChanged = stepTasks.reduce((changed, task) => {
+    if (task.steps.some(s => typeof s === 'string')) {
+      task.steps = task.steps.map(s => typeof s === 'string' ? { text: s, starred: false } : s);
+      return true;
+    }
+    return changed;
+  }, false);
+  if (stepChanged) saveStepTasks();
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────
