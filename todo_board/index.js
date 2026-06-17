@@ -1,5 +1,8 @@
 // ─── Utility ──────────────────────────────────────────────────────────────
-const todayStr = () => new Date().toISOString().slice(0, 10);
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -13,9 +16,9 @@ function load(key, fallback) {
 function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
 // ─── TO-DO LIST ───────────────────────────────────────────────────────────
-let todos = load('todos', []);
+let todos = load('todoboard_todos', []);
 
-function saveTodos() { save('todos', todos); }
+function saveTodos() { save('todoboard_todos', todos); }
 
 function renderTodos() {
   const ul = document.getElementById('todo-list');
@@ -62,9 +65,9 @@ function deleteTodo(i) {
 document.getElementById('todo-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
 
 // ─── HABIT TRACKER ────────────────────────────────────────────────────────
-let habits = load('habits', []);
+let habits = load('todoboard_habits', []);
 
-function saveHabits() { save('habits', habits); }
+function saveHabits() { save('todoboard_habits', habits); }
 
 function renderHabits() {
   const ul = document.getElementById('habit-list');
@@ -117,12 +120,12 @@ function deleteHabit(i) {
 document.getElementById('habit-input').addEventListener('keydown', e => { if (e.key === 'Enter') addHabit(); });
 
 // ─── MULTI-STEP TASKS ─────────────────────────────────────────────────────
-let stepTasks = load('stepTasks', []);
+let stepTasks = load('todoboard_stepTasks', []);
 
 // Keyed by task.id (not index) so deletions don't corrupt expanded state
 const expandedSteps = new Set();
 
-function saveStepTasks() { save('stepTasks', stepTasks); }
+function saveStepTasks() { save('todoboard_stepTasks', stepTasks); }
 
 function toggleExpand(taskId) {
   if (expandedSteps.has(taskId)) expandedSteps.delete(taskId);
@@ -319,6 +322,18 @@ function downloadData() {
 const CATEGORY_MAP = { public: 'day', private: 'night' };
 
 function migrate() {
+  [['todos', 'todoboard_todos'], ['habits', 'todoboard_habits'], ['stepTasks', 'todoboard_stepTasks']].forEach(([oldKey, newKey]) => {
+    const existing = localStorage.getItem(oldKey);
+    if (existing !== null && localStorage.getItem(newKey) === null) {
+      localStorage.setItem(newKey, existing);
+    }
+    localStorage.removeItem(oldKey);
+  });
+
+  todos     = load('todoboard_todos',     []);
+  habits    = load('todoboard_habits',    []);
+  stepTasks = load('todoboard_stepTasks', []);
+
   const todoChanged = todos.reduce((changed, t) => {
     if (CATEGORY_MAP[t.category]) { t.category = CATEGORY_MAP[t.category]; return true; }
     if (!t.category) { t.category = 'day'; return true; }
@@ -339,4 +354,9 @@ migrate();
 renderTodos();
 renderHabits();
 renderStepTasks();
-setTimeout(() => location.reload(), 10 * 60 * 1000);
+function scheduleReloadAtMidnight() {
+  const now = new Date();
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+  setTimeout(() => location.reload(), midnight - now);
+}
+scheduleReloadAtMidnight();
