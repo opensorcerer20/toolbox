@@ -24,20 +24,24 @@ function renderTodos() {
   todos.forEach((t, i) => {
     const li = document.createElement('li');
     if (t.done) li.classList.add('done');
+    if (t.category) li.classList.add(`cat-${t.category}`);
     li.innerHTML = `
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" />
       <span class="todo-text">${escHtml(t.text)}</span>
+      <button class="btn-edit" onclick="openEditModal('todo', ${i})">✎</button>
       <button class="btn-del" onclick="deleteTodo(${i})">✕</button>
     `;
     ul.appendChild(li);
   });
+  renderCategoryColumn();
 }
 
 function addTodo() {
   const inp = document.getElementById('todo-input');
   const text = inp.value.trim();
   if (!text) return;
-  todos.push({ id: Date.now(), text, done: false });
+  const category = document.getElementById('todo-category').value;
+  todos.push({ id: Date.now(), text, done: false, category });
   saveTodos();
   renderTodos();
   inp.value = '';
@@ -70,6 +74,7 @@ function renderHabits() {
   habits.forEach((h, i) => {
     const loggedToday = h.logs.includes(today);
     const li = document.createElement('li');
+    if (h.category) li.classList.add(`cat-${h.category}`);
     li.innerHTML = `
       <span class="habit-name">${escHtml(h.name)}</span>
       <span class="habit-count">${h.logs.length}×</span>
@@ -77,17 +82,20 @@ function renderHabits() {
         ${loggedToday ? 'disabled' : `onclick="logHabit(${i})"`}>
         ${loggedToday ? '✓ Done' : 'Log'}
       </button>
+      <button class="btn-edit" onclick="openEditModal('habit', ${i})">✎</button>
       <button class="btn-del" onclick="deleteHabit(${i})">✕</button>
     `;
     ul.appendChild(li);
   });
+  renderCategoryColumn();
 }
 
 function addHabit() {
   const inp = document.getElementById('habit-input');
   const name = inp.value.trim();
   if (!name) return;
-  habits.push({ id: Date.now(), name, logs: [] });
+  const category = document.getElementById('habit-category').value;
+  habits.push({ id: Date.now(), name, logs: [], category });
   saveHabits();
   renderHabits();
   inp.value = '';
@@ -226,6 +234,76 @@ function deleteStepTask(ti) {
   renderStepTasks();
 }
 
+// ─── Category overview column ─────────────────────────────────────────────
+function renderCategoryColumn() {
+  const dayList  = document.getElementById('cat-day-list');
+  const nightList = document.getElementById('cat-night-list');
+  dayList.innerHTML  = '';
+  nightList.innerHTML = '';
+
+  const items = [
+    ...todos.filter(t => !t.done).map(t => ({ label: t.text,  category: t.category  || 'day' })),
+    ...habits.map(h =>                    ({ label: h.name,   category: h.category  || 'day' })),
+  ];
+
+  items.forEach(({ label, category }) => {
+    const li = document.createElement('li');
+    li.textContent = label;
+    li.className = `cat-${category}`;
+    (category === 'day' ? dayList : nightList).appendChild(li);
+  });
+
+  if (!dayList.children.length)  dayList.innerHTML  = '<li class="empty-msg">None.</li>';
+  if (!nightList.children.length) nightList.innerHTML = '<li class="empty-msg">None.</li>';
+}
+
+// ─── Edit modal ───────────────────────────────────────────────────────────
+let editTarget = null;
+
+function openEditModal(type, index) {
+  editTarget = { type, index };
+  const item = type === 'todo' ? todos[index] : habits[index];
+  const inp = document.getElementById('modal-input');
+  inp.value = type === 'todo' ? item.text : item.name;
+  document.getElementById('modal-category').value = item.category || 'night';
+  document.getElementById('edit-modal').classList.remove('hidden');
+  inp.focus();
+  inp.select();
+}
+
+function closeEditModal() {
+  editTarget = null;
+  document.getElementById('edit-modal').classList.add('hidden');
+}
+
+function saveEdit() {
+  if (!editTarget) return;
+  const val = document.getElementById('modal-input').value.trim();
+  if (!val) return;
+  const category = document.getElementById('modal-category').value;
+  if (editTarget.type === 'todo') {
+    todos[editTarget.index].text = val;
+    todos[editTarget.index].category = category;
+    saveTodos();
+    renderTodos();
+  } else {
+    habits[editTarget.index].name = val;
+    habits[editTarget.index].category = category;
+    saveHabits();
+    renderHabits();
+  }
+  closeEditModal();
+}
+
+function onModalOverlayClick(e) {
+  if (e.target === document.getElementById('edit-modal')) closeEditModal();
+}
+
+document.getElementById('modal-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') saveEdit();
+  if (e.key === 'Escape') closeEditModal();
+});
+
 // ─── Download ─────────────────────────────────────────────────────────────
 function downloadData() {
   const data = { todos, habits, stepTasks, exportedAt: new Date().toISOString() };
@@ -237,7 +315,27 @@ function downloadData() {
   URL.revokeObjectURL(a.href);
 }
 
+// ─── Migrate ──────────────────────────────────────────────────────────────
+const CATEGORY_MAP = { public: 'day', private: 'night' };
+
+function migrate() {
+  const todoChanged = todos.reduce((changed, t) => {
+    if (CATEGORY_MAP[t.category]) { t.category = CATEGORY_MAP[t.category]; return true; }
+    if (!t.category) { t.category = 'day'; return true; }
+    return changed;
+  }, false);
+  if (todoChanged) saveTodos();
+
+  const habitChanged = habits.reduce((changed, h) => {
+    if (CATEGORY_MAP[h.category]) { h.category = CATEGORY_MAP[h.category]; return true; }
+    if (!h.category) { h.category = 'day'; return true; }
+    return changed;
+  }, false);
+  if (habitChanged) saveHabits();
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────
+migrate();
 renderTodos();
 renderHabits();
 renderStepTasks();

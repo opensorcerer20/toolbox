@@ -155,3 +155,133 @@ test('deletes a step task', async ({ page }) => {
   await page.locator('#step-list .btn-del').click();
   await expect(page.locator('#step-list')).not.toContainText('Temp task');
 });
+
+// ─── Edit Modal ───────────────────────────────────────────────────────────────
+
+test('edit modal opens with current todo text prefilled', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#todo-input', 'Original task');
+  await page.click('.btn-add');
+  await page.locator('#todo-list .btn-edit').click();
+  await expect(page.locator('#edit-modal')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#modal-input')).toHaveValue('Original task');
+});
+
+test('edit modal saves updated todo text', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#todo-input', 'Old task');
+  await page.click('.btn-add');
+  await page.locator('#todo-list .btn-edit').click();
+  await page.fill('#modal-input', 'New task');
+  await page.click('.modal-actions .btn-add');
+  await expect(page.locator('#todo-list')).toContainText('New task');
+  await expect(page.locator('#todo-list')).not.toContainText('Old task');
+  await expect(page.locator('#edit-modal')).toHaveClass(/hidden/);
+});
+
+test('edit modal saves on Enter key', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#todo-input', 'Press enter task');
+  await page.click('.btn-add');
+  await page.locator('#todo-list .btn-edit').click();
+  await page.fill('#modal-input', 'Saved via Enter');
+  await page.press('#modal-input', 'Enter');
+  await expect(page.locator('#todo-list')).toContainText('Saved via Enter');
+  await expect(page.locator('#edit-modal')).toHaveClass(/hidden/);
+});
+
+test('edit modal cancel does not save todo changes', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#todo-input', 'Keep this');
+  await page.click('.btn-add');
+  await page.locator('#todo-list .btn-edit').click();
+  await page.fill('#modal-input', 'Changed text');
+  await page.click('.btn-modal-cancel');
+  await expect(page.locator('#todo-list')).toContainText('Keep this');
+  await expect(page.locator('#edit-modal')).toHaveClass(/hidden/);
+});
+
+test('edit modal closes on Escape without saving', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#todo-input', 'Escape test');
+  await page.click('.btn-add');
+  await page.locator('#todo-list .btn-edit').click();
+  await page.fill('#modal-input', 'Should not save');
+  await page.press('#modal-input', 'Escape');
+  await expect(page.locator('#edit-modal')).toHaveClass(/hidden/);
+  await expect(page.locator('#todo-list')).toContainText('Escape test');
+  await expect(page.locator('#todo-list')).not.toContainText('Should not save');
+});
+
+test('edit modal closes on backdrop click without saving', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#todo-input', 'Backdrop test');
+  await page.click('.btn-add');
+  await page.locator('#todo-list .btn-edit').click();
+  await page.fill('#modal-input', 'Should not save');
+  await page.locator('#edit-modal').click({ position: { x: 10, y: 10 } });
+  await expect(page.locator('#edit-modal')).toHaveClass(/hidden/);
+  await expect(page.locator('#todo-list')).toContainText('Backdrop test');
+});
+
+test('edit modal prefills current todo category', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#todo-input', 'Night task');
+  await page.selectOption('#todo-category', 'night');
+  await page.click('.btn-add');
+  await page.locator('#todo-list .btn-edit').click();
+  await expect(page.locator('#modal-category')).toHaveValue('night');
+});
+
+test('edit modal updates todo category', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#todo-input', 'Switch task');
+  await page.selectOption('#todo-category', 'night');
+  await page.click('.btn-add');
+  await page.locator('#todo-list .btn-edit').click();
+  await page.selectOption('#modal-category', 'day');
+  await page.click('.modal-actions .btn-add');
+  await expect(page.locator('#todo-list li')).toHaveClass(/cat-day/);
+});
+
+test('edit modal opens with current habit name prefilled', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#habit-input', 'Morning run');
+  await page.click('.btn-add >> nth=1');
+  await page.locator('#habit-list .btn-edit').click();
+  await expect(page.locator('#edit-modal')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#modal-input')).toHaveValue('Morning run');
+});
+
+test('edit modal saves updated habit name', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#habit-input', 'Old habit');
+  await page.click('.btn-add >> nth=1');
+  await page.locator('#habit-list .btn-edit').click();
+  await page.fill('#modal-input', 'New habit');
+  await page.click('.modal-actions .btn-add');
+  await expect(page.locator('#habit-list')).toContainText('New habit');
+  await expect(page.locator('#habit-list')).not.toContainText('Old habit');
+});
+
+test('edit modal updates habit category', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#habit-input', 'Switch habit');
+  await page.selectOption('#habit-category', 'night');
+  await page.click('.btn-add >> nth=1');
+  await page.locator('#habit-list .btn-edit').click();
+  await page.selectOption('#modal-category', 'day');
+  await page.click('.modal-actions .btn-add');
+  await expect(page.locator('#habit-list li')).toHaveClass(/cat-day/);
+});

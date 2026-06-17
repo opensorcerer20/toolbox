@@ -33,7 +33,7 @@ h1 {
 
 .board {
   display: grid;
-  grid-template-columns: 1fr 2fr;
+  grid-template-columns: 1fr 1fr 2fr;
   gap: 1.5rem;
   max-width: 1100px;
   margin: 0 auto;
@@ -281,6 +281,154 @@ button:hover { opacity: 0.85; }
 }
 
 .btn-download:hover { background: #363c5a; opacity: 1; }
+
+/* --- Category overview column --- */
+.category-col {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.category-panel {
+  flex: 1;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.cat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  padding: 1.25rem;
+  overflow-y: auto;
+}
+
+.cat-section h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.cat-divider {
+  height: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.cat-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  overflow-y: auto;
+}
+
+.cat-list li {
+  font-size: 0.85rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  color: var(--text);
+}
+
+.cat-list li.cat-day  { background: rgba(251, 146, 60, 0.08); }
+.cat-list li.cat-night { background: rgba(74, 222, 128, 0.07); }
+
+/* --- Visibility select --- */
+.visibility-select {
+  background: var(--item-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  padding: 0.45rem 0.4rem;
+  font-size: 0.8rem;
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.visibility-select:focus { border-color: var(--accent); }
+
+.modal-category-select { width: 100%; padding: 0.45rem 0.6rem; font-size: 0.9rem; }
+
+/* --- Visibility hues --- */
+#todo-list li.cat-day,
+#habit-list li.cat-day  { background: rgba(251, 146, 60, 0.08); }
+
+#todo-list li.cat-night,
+#habit-list li.cat-night { background: rgba(74, 222, 128, 0.07); }
+
+/* --- Edit button --- */
+.btn-edit {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.2rem 0.4rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.btn-edit:hover { color: var(--accent); opacity: 1; }
+
+/* --- Edit modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-overlay.hidden { display: none; }
+
+.modal {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 320px;
+}
+
+.modal-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.modal input {
+  background: var(--item-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  outline: none;
+  width: 100%;
+}
+
+.modal input:focus { border-color: var(--accent); }
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.btn-modal-cancel {
+  background: var(--border);
+  color: var(--text-dim);
+}
 
 .tagline {
   text-align: center;

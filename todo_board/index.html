@@ -12,12 +12,31 @@
   <p class="tagline">"Do just one thing today, that's it"</p>
   <div class="board">
 
+    <!-- ===== CATEGORY OVERVIEW ===== -->
+    <div class="category-col">
+      <div class="panel category-panel">
+        <div class="cat-section">
+          <h2>Day</h2>
+          <ul id="cat-day-list" class="cat-list"></ul>
+        </div>
+        <div class="cat-divider"></div>
+        <div class="cat-section">
+          <h2>Night</h2>
+          <ul id="cat-night-list" class="cat-list"></ul>
+        </div>
+      </div>
+    </div>
+
     <div class="left-col">
       <!-- ===== TO-DO LIST ===== -->
       <div class="panel">
         <h2>To-Do</h2>
         <div class="add-row">
           <input id="todo-input" type="text" placeholder="New task…" />
+          <select id="todo-category" class="visibility-select">
+            <option value="night">Night</option>
+            <option value="day">Day</option>
+          </select>
           <button class="btn-add" onclick="addTodo()">Add</button>
         </div>
         <ul id="todo-list"></ul>
@@ -28,6 +47,10 @@
         <h2>Daily Habits</h2>
         <div class="add-row">
           <input id="habit-input" type="text" placeholder="New habit…" />
+          <select id="habit-category" class="visibility-select">
+            <option value="night">Night</option>
+            <option value="day">Day</option>
+          </select>
           <button class="btn-add" onclick="addHabit()">Add</button>
         </div>
         <ul id="habit-list"></ul>
@@ -55,6 +78,22 @@
       <ul id="step-list"></ul>
     </div>
 
+  </div>
+
+  <!-- Edit modal -->
+  <div id="edit-modal" class="modal-overlay hidden" onclick="onModalOverlayClick(event)">
+    <div class="modal">
+      <h3 class="modal-title">Edit</h3>
+      <input id="modal-input" type="text" />
+      <select id="modal-category" class="visibility-select modal-category-select">
+        <option value="night">Night</option>
+        <option value="day">Day</option>
+      </select>
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeEditModal()">Cancel</button>
+        <button class="btn-add" onclick="saveEdit()">Save</button>
+      </div>
+    </div>
   </div>
 
   <script src="index.js"></script>
