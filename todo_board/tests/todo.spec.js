@@ -9,6 +9,22 @@ function freshPage(page) {
   });
 }
 
+async function addTodoAndOpenEdit(page, text) {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#todo-input', text);
+  await page.click('.btn-add');
+  await page.locator('#todo-list .btn-edit').click();
+}
+
+async function addHabitAndOpenEdit(page, text) {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#habit-input', text);
+  await page.click('.btn-add >> nth=1');
+  await page.locator('#habit-list .btn-edit').click();
+}
+
 // ─── To-Do ───────────────────────────────────────────────────────────────────
 
 test('adds a todo item', async ({ page }) => {
@@ -158,22 +174,10 @@ test('deletes a step task', async ({ page }) => {
 
 // ─── Edit Modal ───────────────────────────────────────────────────────────────
 
-test('edit modal opens with current todo text prefilled', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#todo-input', 'Original task');
-  await page.click('.btn-add');
-  await page.locator('#todo-list .btn-edit').click();
-  await expect(page.locator('#edit-modal')).not.toHaveClass(/hidden/);
-  await expect(page.locator('#modal-input')).toHaveValue('Original task');
-});
-
 test('edit modal saves updated todo text', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#todo-input', 'Old task');
-  await page.click('.btn-add');
-  await page.locator('#todo-list .btn-edit').click();
+  await addTodoAndOpenEdit(page, 'Old task');
+  await expect(page.locator('#edit-modal')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#modal-input')).toHaveValue('Old task');
   await page.fill('#modal-input', 'New task');
   await page.click('.modal-actions .btn-add');
   await expect(page.locator('#todo-list')).toContainText('New task');
@@ -182,11 +186,7 @@ test('edit modal saves updated todo text', async ({ page }) => {
 });
 
 test('edit modal saves on Enter key', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#todo-input', 'Press enter task');
-  await page.click('.btn-add');
-  await page.locator('#todo-list .btn-edit').click();
+  await addTodoAndOpenEdit(page, 'Press enter task');
   await page.fill('#modal-input', 'Saved via Enter');
   await page.press('#modal-input', 'Enter');
   await expect(page.locator('#todo-list')).toContainText('Saved via Enter');
@@ -194,11 +194,7 @@ test('edit modal saves on Enter key', async ({ page }) => {
 });
 
 test('edit modal cancel does not save todo changes', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#todo-input', 'Keep this');
-  await page.click('.btn-add');
-  await page.locator('#todo-list .btn-edit').click();
+  await addTodoAndOpenEdit(page, 'Keep this');
   await page.fill('#modal-input', 'Changed text');
   await page.click('.btn-modal-cancel');
   await expect(page.locator('#todo-list')).toContainText('Keep this');
@@ -206,11 +202,7 @@ test('edit modal cancel does not save todo changes', async ({ page }) => {
 });
 
 test('edit modal closes on Escape without saving', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#todo-input', 'Escape test');
-  await page.click('.btn-add');
-  await page.locator('#todo-list .btn-edit').click();
+  await addTodoAndOpenEdit(page, 'Escape test');
   await page.fill('#modal-input', 'Should not save');
   await page.press('#modal-input', 'Escape');
   await expect(page.locator('#edit-modal')).toHaveClass(/hidden/);
@@ -219,25 +211,11 @@ test('edit modal closes on Escape without saving', async ({ page }) => {
 });
 
 test('edit modal closes on backdrop click without saving', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#todo-input', 'Backdrop test');
-  await page.click('.btn-add');
-  await page.locator('#todo-list .btn-edit').click();
+  await addTodoAndOpenEdit(page, 'Backdrop test');
   await page.fill('#modal-input', 'Should not save');
   await page.locator('#edit-modal').click({ position: { x: 10, y: 10 } });
   await expect(page.locator('#edit-modal')).toHaveClass(/hidden/);
   await expect(page.locator('#todo-list')).toContainText('Backdrop test');
-});
-
-test('edit modal prefills current todo category', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#todo-input', 'Night task');
-  await page.selectOption('#todo-category', 'night');
-  await page.click('.btn-add');
-  await page.locator('#todo-list .btn-edit').click();
-  await expect(page.locator('#modal-category')).toHaveValue('night');
 });
 
 test('edit modal updates todo category', async ({ page }) => {
@@ -247,27 +225,16 @@ test('edit modal updates todo category', async ({ page }) => {
   await page.selectOption('#todo-category', 'night');
   await page.click('.btn-add');
   await page.locator('#todo-list .btn-edit').click();
+  await expect(page.locator('#modal-category')).toHaveValue('night');
   await page.selectOption('#modal-category', 'day');
   await page.click('.modal-actions .btn-add');
   await expect(page.locator('#todo-list li')).toHaveClass(/cat-day/);
 });
 
-test('edit modal opens with current habit name prefilled', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#habit-input', 'Morning run');
-  await page.click('.btn-add >> nth=1');
-  await page.locator('#habit-list .btn-edit').click();
-  await expect(page.locator('#edit-modal')).not.toHaveClass(/hidden/);
-  await expect(page.locator('#modal-input')).toHaveValue('Morning run');
-});
-
 test('edit modal saves updated habit name', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#habit-input', 'Old habit');
-  await page.click('.btn-add >> nth=1');
-  await page.locator('#habit-list .btn-edit').click();
+  await addHabitAndOpenEdit(page, 'Old habit');
+  await expect(page.locator('#edit-modal')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#modal-input')).toHaveValue('Old habit');
   await page.fill('#modal-input', 'New habit');
   await page.click('.modal-actions .btn-add');
   await expect(page.locator('#habit-list')).toContainText('New habit');
@@ -288,33 +255,14 @@ test('edit modal updates habit category', async ({ page }) => {
 
 // ─── Stars ────────────────────────────────────────────────────────────────────
 
-test('edit modal star defaults to unstarred for new todo', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#todo-input', 'Plain task');
-  await page.click('.btn-add');
-  await page.locator('#todo-list .btn-edit').click();
+test('edit modal star defaults to unstarred', async ({ page }) => {
+  await addTodoAndOpenEdit(page, 'Plain task');
   await expect(page.locator('#modal-star')).toHaveText('☆');
   await expect(page.locator('#modal-star')).not.toHaveClass(/starred/);
 });
 
-test('clicking star in edit modal toggles to starred for todo', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#todo-input', 'Star me');
-  await page.click('.btn-add');
-  await page.locator('#todo-list .btn-edit').click();
-  await page.click('#modal-star');
-  await expect(page.locator('#modal-star')).toHaveText('★');
-  await expect(page.locator('#modal-star')).toHaveClass(/starred/);
-});
-
 test('starred todo persists after save and modal reopen', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#todo-input', 'Persistent star');
-  await page.click('.btn-add');
-  await page.locator('#todo-list .btn-edit').click();
+  await addTodoAndOpenEdit(page, 'Persistent star');
   await page.click('#modal-star');
   await page.click('.modal-actions .btn-add');
   await page.locator('#todo-list .btn-edit').click();
@@ -322,7 +270,7 @@ test('starred todo persists after save and modal reopen', async ({ page }) => {
   await expect(page.locator('#modal-star')).toHaveClass(/starred/);
 });
 
-test('starred todo appears first in day column', async ({ page }) => {
+test('starred todo appears first in day column and shows star icon', async ({ page }) => {
   await freshPage(page);
   await page.goto(url);
   await page.selectOption('#todo-category', 'day');
@@ -335,31 +283,10 @@ test('starred todo appears first in day column', async ({ page }) => {
   await page.click('.modal-actions .btn-add');
   await expect(page.locator('#cat-day-list li').nth(0)).toContainText('Star this one');
   await expect(page.locator('#cat-day-list li').nth(1)).toContainText('First added');
-});
-
-test('starred todo shows star icon in day column', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.selectOption('#todo-category', 'day');
-  await page.fill('#todo-input', 'Shining task');
-  await page.click('.btn-add');
-  await page.locator('#todo-list .btn-edit').click();
-  await page.click('#modal-star');
-  await page.click('.modal-actions .btn-add');
   await expect(page.locator('#cat-day-list li .cat-star')).toHaveText('★');
 });
 
-test('edit modal star defaults to unstarred for new habit', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.fill('#habit-input', 'Plain habit');
-  await page.click('.btn-add >> nth=1');
-  await page.locator('#habit-list .btn-edit').click();
-  await expect(page.locator('#modal-star')).toHaveText('☆');
-  await expect(page.locator('#modal-star')).not.toHaveClass(/starred/);
-});
-
-test('starred habit appears first in night column', async ({ page }) => {
+test('starred habit appears first in night column and shows star icon', async ({ page }) => {
   await freshPage(page);
   await page.goto(url);
   await page.selectOption('#habit-category', 'night');
@@ -372,16 +299,5 @@ test('starred habit appears first in night column', async ({ page }) => {
   await page.click('.modal-actions .btn-add');
   await expect(page.locator('#cat-night-list li').nth(0)).toContainText('Star this habit');
   await expect(page.locator('#cat-night-list li').nth(1)).toContainText('First habit');
-});
-
-test('starred habit shows star icon in night column', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
-  await page.selectOption('#habit-category', 'night');
-  await page.fill('#habit-input', 'Night habit');
-  await page.click('.btn-add >> nth=1');
-  await page.locator('#habit-list .btn-edit').click();
-  await page.click('#modal-star');
-  await page.click('.modal-actions .btn-add');
   await expect(page.locator('#cat-night-list li .cat-star')).toHaveText('★');
 });
