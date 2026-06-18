@@ -23,8 +23,12 @@ function saveTodos() { save('todoboard_todos', todos); }
 function renderTodos() {
   const ul = document.getElementById('todo-list');
   ul.innerHTML = '';
-  if (!todos.length) { ul.innerHTML = '<li class="empty-msg">No tasks yet.</li>'; return; }
-  todos.forEach((t, i) => {
+  const today = todayStr();
+  const visible = todos.map((_, i) => i).filter(i => !todos[i].completedOn || todos[i].completedOn >= today);
+  if (!visible.length) { ul.innerHTML = '<li class="empty-msg">No tasks yet.</li>'; return; }
+  const order = visible.sort((a, b) => todos[a].done - todos[b].done);
+  order.forEach(i => {
+    const t = todos[i];
     const li = document.createElement('li');
     if (t.done) li.classList.add('done');
     if (t.category) li.classList.add(`cat-${t.category}`);
@@ -44,7 +48,7 @@ function addTodo() {
   const text = inp.value.trim();
   if (!text) return;
   const category = document.getElementById('todo-category').value;
-  todos.push({ id: Date.now(), text, done: false, category });
+  todos.push({ id: Date.now(), text, done: false, completedOn: null, category });
   saveTodos();
   renderTodos();
   inp.value = '';
@@ -52,6 +56,7 @@ function addTodo() {
 
 function toggleTodo(i) {
   todos[i].done = !todos[i].done;
+  todos[i].completedOn = todos[i].done ? todayStr() : null;
   saveTodos();
   renderTodos();
 }
@@ -246,7 +251,7 @@ function renderCategoryColumn() {
 
   const items = [
     ...todos.filter(t => !t.done).map(t => ({ label: t.text, category: t.category || 'day', starred: !!t.starred })),
-    ...habits.map(h =>                    ({ label: h.name,  category: h.category || 'day', starred: !!h.starred })),
+    ...habits.filter(h => !h.logs.includes(todayStr())).map(h => ({ label: h.name, category: h.category || 'day', starred: !!h.starred })),
   ];
 
   items.sort((a, b) => b.starred - a.starred);
@@ -360,6 +365,7 @@ function migrate() {
     if (CATEGORY_MAP[t.category]) { t.category = CATEGORY_MAP[t.category]; c = true; }
     if (!t.category) { t.category = 'day'; c = true; }
     if (!('starred' in t)) { t.starred = false; c = true; }
+    if (!('completedOn' in t)) { t.completedOn = t.done ? todayStr() : null; c = true; }
     return c;
   }, false);
   if (todoChanged) saveTodos();
