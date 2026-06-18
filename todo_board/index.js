@@ -133,6 +133,32 @@ const expandedSteps = new Set();
 
 function saveStepTasks() { save('todoboard_stepTasks', stepTasks); }
 
+// ─── Shared form element factories ───────────────────────────────────────────
+function makeCategorySelect(category, extraClass = '') {
+  const sel = document.createElement('select');
+  sel.className = ['visibility-select', extraClass].filter(Boolean).join(' ');
+  ['night', 'day'].forEach(val => {
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+    if (val === category) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  return sel;
+}
+
+function makeStarBtn(starred) {
+  const btn = document.createElement('button');
+  btn.className = starred ? 'btn-star starred' : 'btn-star';
+  btn.textContent = starred ? '★' : '☆';
+  btn.onclick = () => {
+    const now = !btn.classList.contains('starred');
+    btn.classList.toggle('starred', now);
+    btn.textContent = now ? '★' : '☆';
+  };
+  return btn;
+}
+
 // Builds a single step input row DOM node
 function makeStepInputRow(text = '', count = 1, category = 'night', starred = false) {
   const row = document.createElement('div');
@@ -144,25 +170,9 @@ function makeStepInputRow(text = '', count = 1, category = 'night', starred = fa
   input.value = text;
   row.appendChild(input);
 
-  const catSelect = document.createElement('select');
-  catSelect.className = 'visibility-select step-row-select';
-  ['night', 'day'].forEach(val => {
-    const opt = document.createElement('option');
-    opt.value = val;
-    opt.textContent = val.charAt(0).toUpperCase() + val.slice(1);
-    if (val === category) opt.selected = true;
-    catSelect.appendChild(opt);
-  });
-  row.appendChild(catSelect);
+  row.appendChild(makeCategorySelect(category, 'step-row-select'));
 
-  const starBtn = document.createElement('button');
-  starBtn.className = starred ? 'btn-star starred' : 'btn-star';
-  starBtn.textContent = starred ? '★' : '☆';
-  starBtn.onclick = () => {
-    const nowStarred = !starBtn.classList.contains('starred');
-    starBtn.classList.toggle('starred', nowStarred);
-    starBtn.textContent = nowStarred ? '★' : '☆';
-  };
+  const starBtn = makeStarBtn(starred);
   row.appendChild(starBtn);
 
   const delBtn = document.createElement('button');
@@ -432,20 +442,22 @@ function openEditModal(type, index) {
   const item = type === 'todo' ? todos[index] : habits[index];
   const inp = document.getElementById('modal-input');
   inp.value = type === 'todo' ? item.text : item.name;
-  document.getElementById('modal-category').value = item.category || 'night';
-  const starBtn = document.getElementById('modal-star');
-  starBtn.classList.toggle('starred', !!item.starred);
-  starBtn.textContent = item.starred ? '★' : '☆';
+
+  const catSlot = document.getElementById('modal-category-slot');
+  catSlot.innerHTML = '';
+  const catSel = makeCategorySelect(item.category || 'night', 'modal-category-select');
+  catSel.id = 'modal-category';
+  catSlot.appendChild(catSel);
+
+  const starSlot = document.getElementById('modal-star-slot');
+  starSlot.innerHTML = '';
+  const starBtn = makeStarBtn(!!item.starred);
+  starBtn.id = 'modal-star';
+  starSlot.appendChild(starBtn);
+
   document.getElementById('edit-modal').classList.remove('hidden');
   inp.focus();
   inp.select();
-}
-
-function toggleModalStar() {
-  const btn = document.getElementById('modal-star');
-  const nowStarred = !btn.classList.contains('starred');
-  btn.classList.toggle('starred', nowStarred);
-  btn.textContent = nowStarred ? '★' : '☆';
 }
 
 function closeEditModal() {

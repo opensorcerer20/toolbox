@@ -79,13 +79,10 @@
     <div class="modal">
       <h3 class="modal-title">Edit</h3>
       <input id="modal-input" type="text" />
-      <select id="modal-category" class="visibility-select modal-category-select">
-        <option value="night">Night</option>
-        <option value="day">Day</option>
-      </select>
+      <div id="modal-category-slot"></div>
       <div class="modal-star-row">
         <span class="modal-star-label">Starred</span>
-        <button id="modal-star" class="btn-star" onclick="toggleModalStar()">☆</button>
+        <span id="modal-star-slot"></span>
       </div>
       <div class="modal-actions">
         <button class="btn-modal-cancel" onclick="closeEditModal()">Cancel</button>
