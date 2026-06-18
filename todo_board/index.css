@@ -369,12 +369,20 @@ button:hover { opacity: 0.85; }
 
 .modal-category-select { width: 100%; padding: 0.45rem 0.6rem; font-size: 0.9rem; }
 
+.step-row-select { font-size: 0.75rem; padding: 0.3rem 0.25rem; }
+
 /* --- Visibility hues --- */
 #todo-list li.cat-day,
 #habit-list li.cat-day  { background: rgba(251, 146, 60, 0.08); }
 
 #todo-list li.cat-night,
 #habit-list li.cat-night { background: rgba(74, 222, 128, 0.07); }
+
+.step-row.cat-day,
+.step-current.cat-day   { background: rgba(251, 146, 60, 0.08); border-radius: 5px; }
+
+.step-row.cat-night,
+.step-current.cat-night { background: rgba(74, 222, 128, 0.07); border-radius: 5px; }
 
 /* --- Edit button --- */
 .btn-edit {

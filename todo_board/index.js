@@ -134,19 +134,43 @@ const expandedSteps = new Set();
 function saveStepTasks() { save('todoboard_stepTasks', stepTasks); }
 
 // Builds a single step input row DOM node
-function makeStepInputRow(text = '', count = 1) {
+function makeStepInputRow(text = '', count = 1, category = 'night', starred = false) {
   const row = document.createElement('div');
   row.className = 'step-input-row';
+
   const input = document.createElement('input');
   input.type = 'text';
   input.placeholder = `Step ${count}…`;
   input.value = text;
+  row.appendChild(input);
+
+  const catSelect = document.createElement('select');
+  catSelect.className = 'visibility-select step-row-select';
+  ['night', 'day'].forEach(val => {
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+    if (val === category) opt.selected = true;
+    catSelect.appendChild(opt);
+  });
+  row.appendChild(catSelect);
+
+  const starBtn = document.createElement('button');
+  starBtn.className = starred ? 'btn-star starred' : 'btn-star';
+  starBtn.textContent = starred ? '★' : '☆';
+  starBtn.onclick = () => {
+    const nowStarred = !starBtn.classList.contains('starred');
+    starBtn.classList.toggle('starred', nowStarred);
+    starBtn.textContent = nowStarred ? '★' : '☆';
+  };
+  row.appendChild(starBtn);
+
   const delBtn = document.createElement('button');
   delBtn.className = 'btn-del';
   delBtn.textContent = '✕';
   delBtn.onclick = () => removeStepField(delBtn);
-  row.appendChild(input);
   row.appendChild(delBtn);
+
   return row;
 }
 
@@ -169,7 +193,12 @@ function renderStepTaskForm(containerEl, { name = '', steps = [], nameId, fields
   fieldsDiv.className = 'step-add-steps';
   fieldsDiv.id = fieldsId;
   const stepArr = steps.length ? steps : [null];
-  stepArr.forEach((s, i) => fieldsDiv.appendChild(makeStepInputRow(s ? (typeof s === 'string' ? s : s.text) : '', i + 1)));
+  stepArr.forEach((s, i) => {
+    const text = s ? (typeof s === 'string' ? s : s.text) : '';
+    const cat  = s && typeof s === 'object' ? (s.category || 'night') : 'night';
+    const star = s && typeof s === 'object' ? !!s.starred : false;
+    fieldsDiv.appendChild(makeStepInputRow(text, i + 1, cat, star));
+  });
   containerEl.appendChild(fieldsDiv);
 
   const actionsDiv = document.createElement('div');
@@ -230,25 +259,30 @@ function renderStepTasks() {
     if (expanded) {
       stepsHtml = `<div class="step-all-steps">` +
         task.steps.map((s, si) => {
+          const cat  = s.category || 'night';
+          const star = s.starred ? '<span class="cat-star step-cat-star">★</span>' : '';
           if (si < task.current) {
-            return `<div class="step-row past-step">${escHtml(s.text)}</div>`;
+            return `<div class="step-row past-step cat-${cat}">${star}${escHtml(s.text)}</div>`;
           } else if (si === task.current && !done) {
-            return `<div class="step-row current-step">
+            return `<div class="step-row current-step cat-${cat}">
                <input type="checkbox" onchange="advanceStep(${ti})" />
-               <span class="step-current-text">${escHtml(s.text)}</span>
+               ${star}<span class="step-current-text">${escHtml(s.text)}</span>
              </div>`;
           } else {
-            return `<div class="step-row future-step">${escHtml(s.text)}</div>`;
+            return `<div class="step-row future-step cat-${cat}">${star}${escHtml(s.text)}</div>`;
           }
         }).join('') +
         (done ? `<div class="step-row"><span class="step-done-label">✓ All steps complete!</span></div>` : '') +
       `</div>`;
     } else {
-      stepsHtml = `<div class="step-current">
+      const s = task.steps[task.current];
+      const cat  = done ? '' : (s.category || 'night');
+      const star = (!done && s.starred) ? '<span class="cat-star step-cat-star">★</span>' : '';
+      stepsHtml = `<div class="step-current${cat ? ` cat-${cat}` : ''}">
         ${done
           ? `<span class="step-done-label">✓ All steps complete!</span>`
           : `<input type="checkbox" onchange="advanceStep(${ti})" />
-             <span class="step-current-text">${escHtml(task.steps[task.current].text)}</span>`
+             ${star}<span class="step-current-text">${escHtml(s.text)}</span>`
         }
       </div>`;
     }
@@ -281,8 +315,12 @@ function removeStepField(btn) {
 function addStepTask() {
   const name = document.getElementById('step-task-input').value.trim();
   if (!name) return;
-  const steps = Array.from(document.querySelectorAll('#step-fields input'))
-    .map(i => i.value.trim()).filter(Boolean).map(text => ({ text, starred: false }));
+  const steps = Array.from(document.querySelectorAll('#step-fields .step-input-row'))
+    .map(row => ({
+      text:     row.querySelector('input[type="text"]').value.trim(),
+      category: row.querySelector('select').value,
+      starred:  row.querySelector('.btn-star').classList.contains('starred'),
+    })).filter(s => s.text);
   if (!steps.length) return;
   stepTasks.push({ id: Date.now(), name, steps, current: 0 });
   saveStepTasks();
@@ -335,12 +373,16 @@ function saveStepEdit() {
   if (stepEditTarget === null) return;
   const name = document.getElementById('step-edit-name').value.trim();
   if (!name) return;
-  const newStepTexts = Array.from(document.querySelectorAll('#step-edit-fields .step-input-row input'))
-    .map(inp => inp.value.trim()).filter(Boolean);
-  if (!newStepTexts.length) return;
+  const newSteps = Array.from(document.querySelectorAll('#step-edit-fields .step-input-row'))
+    .map(row => ({
+      text:     row.querySelector('input[type="text"]').value.trim(),
+      category: row.querySelector('select').value,
+      starred:  row.querySelector('.btn-star').classList.contains('starred'),
+    })).filter(s => s.text);
+  if (!newSteps.length) return;
   const task = stepTasks[stepEditTarget];
   task.name = name;
-  task.steps = newStepTexts.map((text, i) => ({ text, starred: task.steps[i]?.starred ?? false }));
+  task.steps = newSteps;
   task.current = Math.min(task.current, task.steps.length);
   saveStepTasks();
   renderStepTasks();
@@ -489,11 +531,14 @@ function migrate() {
   if (habitChanged) saveHabits();
 
   const stepChanged = stepTasks.reduce((changed, task) => {
-    if (task.steps.some(s => typeof s === 'string')) {
-      task.steps = task.steps.map(s => typeof s === 'string' ? { text: s, starred: false } : s);
-      return true;
-    }
-    return changed;
+    let c = changed;
+    task.steps = task.steps.map(s => {
+      if (typeof s === 'string') { c = true; return { text: s, starred: false, category: 'night' }; }
+      if (!('starred' in s))  { c = true; s = { ...s, starred: false }; }
+      if (!('category' in s)) { c = true; s = { ...s, category: 'night' }; }
+      return s;
+    });
+    return c;
   }, false);
   if (stepChanged) saveStepTasks();
 }
