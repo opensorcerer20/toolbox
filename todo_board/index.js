@@ -126,11 +126,89 @@ document.getElementById('habit-input').addEventListener('keydown', e => { if (e.
 
 // ─── MULTI-STEP TASKS ─────────────────────────────────────────────────────
 let stepTasks = load('todoboard_stepTasks', []);
+let stepEditTarget = null;
 
 // Keyed by task.id (not index) so deletions don't corrupt expanded state
 const expandedSteps = new Set();
 
 function saveStepTasks() { save('todoboard_stepTasks', stepTasks); }
+
+// Builds a single step input row DOM node
+function makeStepInputRow(text = '', count = 1) {
+  const row = document.createElement('div');
+  row.className = 'step-input-row';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = `Step ${count}…`;
+  input.value = text;
+  const delBtn = document.createElement('button');
+  delBtn.className = 'btn-del';
+  delBtn.textContent = '✕';
+  delBtn.onclick = () => removeStepField(delBtn);
+  row.appendChild(input);
+  row.appendChild(delBtn);
+  return row;
+}
+
+// Renders a full step task form (name input, step fields, + Step / Cancel / confirm)
+// into containerEl. Used for both the add form and the edit modal.
+function renderStepTaskForm(containerEl, { name = '', steps = [], nameId, fieldsId, confirmFn, confirmLabel = 'Add Task', cancelFn = null }) {
+  containerEl.innerHTML = '';
+
+  const nameRow = document.createElement('div');
+  nameRow.className = 'add-row';
+  const nameInput = document.createElement('input');
+  nameInput.id = nameId;
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Task name…';
+  nameInput.value = name;
+  nameRow.appendChild(nameInput);
+  containerEl.appendChild(nameRow);
+
+  const fieldsDiv = document.createElement('div');
+  fieldsDiv.className = 'step-add-steps';
+  fieldsDiv.id = fieldsId;
+  const stepArr = steps.length ? steps : [null];
+  stepArr.forEach((s, i) => fieldsDiv.appendChild(makeStepInputRow(s ? (typeof s === 'string' ? s : s.text) : '', i + 1)));
+  containerEl.appendChild(fieldsDiv);
+
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'step-add-steps step-add-actions';
+
+  const addFieldBtn = document.createElement('button');
+  addFieldBtn.className = 'btn-add-step-field';
+  addFieldBtn.textContent = '+ Step';
+  addFieldBtn.onclick = () => {
+    const c = document.getElementById(fieldsId);
+    c.appendChild(makeStepInputRow('', c.querySelectorAll('.step-input-row').length + 1));
+  };
+  actionsDiv.appendChild(addFieldBtn);
+
+  if (cancelFn) {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-modal-cancel';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = cancelFn;
+    actionsDiv.appendChild(cancelBtn);
+  }
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'btn-confirm-task';
+  confirmBtn.textContent = confirmLabel;
+  confirmBtn.onclick = confirmFn;
+  actionsDiv.appendChild(confirmBtn);
+
+  containerEl.appendChild(actionsDiv);
+}
+
+function initStepAddForm() {
+  renderStepTaskForm(document.getElementById('step-builder'), {
+    nameId: 'step-task-input',
+    fieldsId: 'step-fields',
+    confirmFn: addStepTask,
+    confirmLabel: 'Add Task',
+  });
+}
 
 function toggleExpand(taskId) {
   if (expandedSteps.has(taskId)) expandedSteps.delete(taskId);
@@ -184,6 +262,7 @@ function renderStepTasks() {
         </span>
         <span class="step-name-right">
           <span class="step-progress">${progress}</span>
+          <button class="btn-edit" onclick="openStepEditModal(${ti})">✎</button>
           <button class="btn-del" onclick="deleteStepTask(${ti})">✕</button>
         </span>
       </div>
@@ -193,20 +272,8 @@ function renderStepTasks() {
   });
 }
 
-function addStepField() {
-  const container = document.getElementById('step-fields');
-  const count = container.querySelectorAll('.step-input-row').length + 1;
-  const row = document.createElement('div');
-  row.className = 'step-input-row';
-  row.innerHTML = `
-    <input type="text" placeholder="Step ${count}…" />
-    <button class="btn-del" onclick="removeStepField(this)">✕</button>
-  `;
-  container.appendChild(row);
-}
-
 function removeStepField(btn) {
-  const container = document.getElementById('step-fields');
+  const container = btn.closest('.step-add-steps');
   if (container.querySelectorAll('.step-input-row').length <= 1) return;
   btn.closest('.step-input-row').remove();
 }
@@ -220,13 +287,7 @@ function addStepTask() {
   stepTasks.push({ id: Date.now(), name, steps, current: 0 });
   saveStepTasks();
   renderStepTasks();
-  document.getElementById('step-task-input').value = '';
-  document.getElementById('step-fields').innerHTML = `
-    <div class="step-input-row">
-      <input type="text" placeholder="Step 1…" />
-      <button class="btn-del" onclick="removeStepField(this)">✕</button>
-    </div>
-  `;
+  initStepAddForm();
 }
 
 function advanceStep(ti) {
@@ -240,6 +301,54 @@ function deleteStepTask(ti) {
   stepTasks.splice(ti, 1);
   saveStepTasks();
   renderStepTasks();
+}
+
+// ─── Step-task edit modal ─────────────────────────────────────────────────
+function openStepEditModal(ti) {
+  stepEditTarget = ti;
+  const task = stepTasks[ti];
+  renderStepTaskForm(document.getElementById('step-edit-form-body'), {
+    name: task.name,
+    steps: task.steps,
+    nameId: 'step-edit-name',
+    fieldsId: 'step-edit-fields',
+    confirmFn: saveStepEdit,
+    confirmLabel: 'Save',
+    cancelFn: closeStepEditModal,
+  });
+  document.getElementById('step-edit-modal').classList.remove('hidden');
+  const nameInput = document.getElementById('step-edit-name');
+  nameInput.focus();
+  nameInput.select();
+  nameInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveStepEdit();
+    if (e.key === 'Escape') closeStepEditModal();
+  });
+}
+
+function closeStepEditModal() {
+  stepEditTarget = null;
+  document.getElementById('step-edit-modal').classList.add('hidden');
+}
+
+function saveStepEdit() {
+  if (stepEditTarget === null) return;
+  const name = document.getElementById('step-edit-name').value.trim();
+  if (!name) return;
+  const newStepTexts = Array.from(document.querySelectorAll('#step-edit-fields .step-input-row input'))
+    .map(inp => inp.value.trim()).filter(Boolean);
+  if (!newStepTexts.length) return;
+  const task = stepTasks[stepEditTarget];
+  task.name = name;
+  task.steps = newStepTexts.map((text, i) => ({ text, starred: task.steps[i]?.starred ?? false }));
+  task.current = Math.min(task.current, task.steps.length);
+  saveStepTasks();
+  renderStepTasks();
+  closeStepEditModal();
+}
+
+function onStepModalOverlayClick(e) {
+  if (e.target === document.getElementById('step-edit-modal')) closeStepEditModal();
 }
 
 // ─── Category overview column ─────────────────────────────────────────────
@@ -393,7 +502,11 @@ function migrate() {
 migrate();
 renderTodos();
 renderHabits();
+initStepAddForm();
 renderStepTasks();
+document.getElementById('step-edit-modal').addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeStepEditModal();
+});
 function scheduleReloadAtMidnight() {
   const now = new Date();
   const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);

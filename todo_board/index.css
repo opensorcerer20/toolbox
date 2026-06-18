@@ -243,9 +243,9 @@ button:hover { opacity: 0.85; }
   padding: 0.25rem 0;
 }
 
-.step-row.past-step    { color: var(--text-muted); text-decoration: line-through; font-size: 1rem; }
+.step-row.past-step    { color: var(--text-muted); text-decoration: line-through; font-size: 1rem; padding-left: 40px; }
 .step-row.current-step { font-size: 1.05rem; }
-.step-row.future-step  { color: var(--text-muted); font-size: 1rem; padding-left: 20px; }
+.step-row.future-step  { color: var(--text-muted); font-size: 1rem; padding-left: 40px; }
 
 /* --- Step add form --- */
 .step-add-steps .step-input-row {
@@ -464,6 +464,10 @@ button:hover { opacity: 0.85; }
 .btn-modal-cancel {
   background: var(--border);
   color: var(--text-dim);
+}
+
+.step-edit-modal-inner {
+  min-width: 420px;
 }
 
 .tagline {

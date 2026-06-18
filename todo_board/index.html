@@ -60,24 +60,18 @@
     <!-- ===== MULTI-STEP TASKS ===== -->
     <div class="panel">
       <h2>Step-by-Step</h2>
-      <div id="step-builder">
-        <div class="add-row">
-          <input id="step-task-input" type="text" placeholder="Task name…" />
-        </div>
-        <div class="step-add-steps" id="step-fields">
-          <div class="step-input-row">
-            <input type="text" placeholder="Step 1…" />
-            <button class="btn-del" onclick="removeStepField(this)">✕</button>
-          </div>
-        </div>
-        <div class="step-add-steps step-add-actions">
-          <button class="btn-add-step-field" onclick="addStepField()">+ Step</button>
-          <button class="btn-confirm-task" onclick="addStepTask()">Add Task</button>
-        </div>
-      </div>
+      <div id="step-builder"></div>
       <ul id="step-list"></ul>
     </div>
 
+  </div>
+
+  <!-- Step-task edit modal -->
+  <div id="step-edit-modal" class="modal-overlay hidden" onclick="onStepModalOverlayClick(event)">
+    <div class="modal step-edit-modal-inner">
+      <h3 class="modal-title">Edit Step Task</h3>
+      <div id="step-edit-form-body"></div>
+    </div>
   </div>
 
   <!-- Edit modal -->

@@ -172,6 +172,113 @@ test('deletes a step task', async ({ page }) => {
   await expect(page.locator('#step-list')).not.toContainText('Temp task');
 });
 
+// ─── Step-task edit modal ─────────────────────────────────────────────────────
+
+async function addStepTaskAndOpenEdit(page, name, steps) {
+  await freshPage(page);
+  await page.goto(url);
+  await page.fill('#step-task-input', name);
+  await page.locator('#step-fields input').fill(steps[0]);
+  for (let i = 1; i < steps.length; i++) {
+    await page.click('.btn-add-step-field');
+    await page.locator(`#step-fields input >> nth=${i}`).fill(steps[i]);
+  }
+  await page.click('.btn-confirm-task');
+  await page.locator('#step-list .btn-edit').click();
+}
+
+test('step edit modal opens with task name pre-filled', async ({ page }) => {
+  await addStepTaskAndOpenEdit(page, 'My task', ['Alpha']);
+  await expect(page.locator('#step-edit-modal')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#step-edit-name')).toHaveValue('My task');
+});
+
+test('step edit modal opens with steps pre-filled', async ({ page }) => {
+  await addStepTaskAndOpenEdit(page, 'Two stepper', ['First', 'Second']);
+  await expect(page.locator('#step-edit-fields input >> nth=0')).toHaveValue('First');
+  await expect(page.locator('#step-edit-fields input >> nth=1')).toHaveValue('Second');
+});
+
+test('step edit modal saves updated task name', async ({ page }) => {
+  await addStepTaskAndOpenEdit(page, 'Old name', ['A step']);
+  await page.fill('#step-edit-name', 'New name');
+  await page.click('#step-edit-modal .btn-confirm-task');
+  await expect(page.locator('#step-list')).toContainText('New name');
+  await expect(page.locator('#step-list')).not.toContainText('Old name');
+  await expect(page.locator('#step-edit-modal')).toHaveClass(/hidden/);
+});
+
+test('step edit modal saves updated step text', async ({ page }) => {
+  await addStepTaskAndOpenEdit(page, 'My task', ['Old step']);
+  await page.fill('#step-edit-fields input >> nth=0', 'New step');
+  await page.click('#step-edit-modal .btn-confirm-task');
+  await expect(page.locator('#step-list')).toContainText('New step');
+});
+
+test('step edit modal saves on Enter key in name field', async ({ page }) => {
+  await addStepTaskAndOpenEdit(page, 'Enter task', ['A step']);
+  await page.fill('#step-edit-name', 'Saved via Enter');
+  await page.press('#step-edit-name', 'Enter');
+  await expect(page.locator('#step-list')).toContainText('Saved via Enter');
+  await expect(page.locator('#step-edit-modal')).toHaveClass(/hidden/);
+});
+
+test('step edit modal cancel does not save changes', async ({ page }) => {
+  await addStepTaskAndOpenEdit(page, 'Keep name', ['A step']);
+  await page.fill('#step-edit-name', 'Changed');
+  await page.click('#step-edit-modal .btn-modal-cancel');
+  await expect(page.locator('#step-list')).toContainText('Keep name');
+  await expect(page.locator('#step-edit-modal')).toHaveClass(/hidden/);
+});
+
+test('step edit modal closes on Escape without saving', async ({ page }) => {
+  await addStepTaskAndOpenEdit(page, 'Escape task', ['A step']);
+  await page.fill('#step-edit-name', 'Should not save');
+  await page.press('#step-edit-name', 'Escape');
+  await expect(page.locator('#step-edit-modal')).toHaveClass(/hidden/);
+  await expect(page.locator('#step-list')).toContainText('Escape task');
+});
+
+test('step edit modal closes on backdrop click without saving', async ({ page }) => {
+  await addStepTaskAndOpenEdit(page, 'Backdrop task', ['A step']);
+  await page.fill('#step-edit-name', 'Should not save');
+  await page.locator('#step-edit-modal').click({ position: { x: 10, y: 10 } });
+  await expect(page.locator('#step-edit-modal')).toHaveClass(/hidden/);
+  await expect(page.locator('#step-list')).toContainText('Backdrop task');
+});
+
+test('step edit modal can add a new step', async ({ page }) => {
+  await addStepTaskAndOpenEdit(page, 'Growing task', ['First']);
+  await page.click('#step-edit-modal .btn-add-step-field');
+  await page.locator('#step-edit-fields input >> nth=1').fill('Second');
+  await page.click('#step-edit-modal .btn-confirm-task');
+  await page.locator('#step-list .btn-expand').click();
+  await expect(page.locator('#step-list')).toContainText('First');
+  await expect(page.locator('#step-list')).toContainText('Second');
+});
+
+test('step edit modal can remove a step', async ({ page }) => {
+  await addStepTaskAndOpenEdit(page, 'Shrink task', ['Keep', 'Remove']);
+  await page.locator('#step-edit-fields .btn-del >> nth=1').click();
+  await page.click('#step-edit-modal .btn-confirm-task');
+  await page.locator('#step-list .btn-expand').click();
+  await expect(page.locator('#step-list')).toContainText('Keep');
+  await expect(page.locator('#step-list')).not.toContainText('Remove');
+});
+
+test('step edit preserves progress on name-only change', async ({ page }) => {
+  await addStepTaskAndOpenEdit(page, 'Progress task', ['Step 1', 'Step 2']);
+  // Close modal, advance past step 1, then edit name
+  await page.click('#step-edit-modal .btn-modal-cancel');
+  await page.locator('#step-list input[type="checkbox"]').click();
+  await page.locator('#step-list .btn-edit').click();
+  await page.fill('#step-edit-name', 'Renamed task');
+  await page.click('#step-edit-modal .btn-confirm-task');
+  // Should still show step 2 as current (progress preserved)
+  await expect(page.locator('#step-list')).toContainText('Step 2');
+  await expect(page.locator('#step-list')).not.toContainText('Step 1');
+});
+
 // ─── Edit Modal ───────────────────────────────────────────────────────────────
 
 test('edit modal saves updated todo text', async ({ page }) => {
@@ -251,6 +358,64 @@ test('edit modal updates habit category', async ({ page }) => {
   await page.selectOption('#modal-category', 'day');
   await page.click('.modal-actions .btn-add');
   await expect(page.locator('#habit-list li')).toHaveClass(/cat-day/);
+});
+
+// ─── Day/Night column removal ─────────────────────────────────────────────────
+
+test('completing a day todo removes it from the day list', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.selectOption('#todo-category', 'day');
+  await page.fill('#todo-input', 'Day errand');
+  await page.click('.btn-add');
+  await expect(page.locator('#cat-day-list')).toContainText('Day errand');
+  await page.locator('#todo-list li input[type="checkbox"]').click();
+  await expect(page.locator('#cat-day-list')).not.toContainText('Day errand');
+});
+
+test('completing a night todo removes it from the night list', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.selectOption('#todo-category', 'night');
+  await page.fill('#todo-input', 'Night task');
+  await page.click('.btn-add');
+  await expect(page.locator('#cat-night-list')).toContainText('Night task');
+  await page.locator('#todo-list li input[type="checkbox"]').click();
+  await expect(page.locator('#cat-night-list')).not.toContainText('Night task');
+});
+
+test('logging a day habit removes it from the day list', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.selectOption('#habit-category', 'day');
+  await page.fill('#habit-input', 'Morning run');
+  await page.click('.btn-add >> nth=1');
+  await expect(page.locator('#cat-day-list')).toContainText('Morning run');
+  await page.locator('#habit-list .btn-habit-log').click();
+  await expect(page.locator('#cat-day-list')).not.toContainText('Morning run');
+});
+
+test('logging a night habit removes it from the night list', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.selectOption('#habit-category', 'night');
+  await page.fill('#habit-input', 'Evening read');
+  await page.click('.btn-add >> nth=1');
+  await expect(page.locator('#cat-night-list')).toContainText('Evening read');
+  await page.locator('#habit-list .btn-habit-log').click();
+  await expect(page.locator('#cat-night-list')).not.toContainText('Evening read');
+});
+
+test('unchecking a todo restores it to the day/night list', async ({ page }) => {
+  await freshPage(page);
+  await page.goto(url);
+  await page.selectOption('#todo-category', 'day');
+  await page.fill('#todo-input', 'Restore me');
+  await page.click('.btn-add');
+  await page.locator('#todo-list li input[type="checkbox"]').click();
+  await expect(page.locator('#cat-day-list')).not.toContainText('Restore me');
+  await page.locator('#todo-list li input[type="checkbox"]').click();
+  await expect(page.locator('#cat-day-list')).toContainText('Restore me');
 });
 
 // ─── Stars ────────────────────────────────────────────────────────────────────
