@@ -1,4 +1,8 @@
+import { useEffect } from 'preact/hooks';
+import { renderCategoryColumn } from './store';
+
 export default function CategoryPanel() {
+  useEffect(() => { renderCategoryColumn(); }, []);
   return (
     <div class="panel category-panel">
       <div class="cat-section">

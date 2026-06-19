@@ -359,6 +359,72 @@ test('edit modal updates habit category', async ({ page }) => {
   await expect(page.locator('#habit-list li')).toHaveClass(/cat-day/);
 });
 
+// ─── Day/Night column appearance ─────────────────────────────────────────────
+
+test('adding a day todo shows it in the day list', async ({ page }) => {
+  await freshPage(page, 'todo');
+  await page.goto('/');
+  await page.selectOption('#todo-category', 'day');
+  await page.fill('#todo-input', 'Day task');
+  await page.click('.btn-add');
+  await expect(page.locator('#cat-day-list')).toContainText('Day task');
+});
+
+test('adding a night todo shows it in the night list', async ({ page }) => {
+  await freshPage(page, 'todo');
+  await page.goto('/');
+  await page.selectOption('#todo-category', 'night');
+  await page.fill('#todo-input', 'Night task');
+  await page.click('.btn-add');
+  await expect(page.locator('#cat-night-list')).toContainText('Night task');
+});
+
+test('adding a day habit shows it in the day list', async ({ page }) => {
+  await freshPage(page, 'habits');
+  await page.goto('/');
+  await page.selectOption('#habit-category', 'day');
+  await page.fill('#habit-input', 'Morning stretch');
+  await page.click('.btn-add >> nth=1');
+  await expect(page.locator('#cat-day-list')).toContainText('Morning stretch');
+});
+
+test('adding a night habit shows it in the night list', async ({ page }) => {
+  await freshPage(page, 'habits');
+  await page.goto('/');
+  await page.selectOption('#habit-category', 'night');
+  await page.fill('#habit-input', 'Evening journal');
+  await page.click('.btn-add >> nth=1');
+  await expect(page.locator('#cat-night-list')).toContainText('Evening journal');
+});
+
+test('adding a step task shows first step in the day/night list', async ({ page }) => {
+  await freshPage(page, 'steps');
+  await page.goto('/');
+  await page.fill('#step-task-input', 'Build app');
+  await page.locator('#step-fields input').fill('Write tests');
+  await page.locator('#step-fields .visibility-select').selectOption('day');
+  await page.click('.btn-add-step-field');
+  await page.locator('#step-fields input >> nth=1').fill('Deploy');
+  await page.click('.btn-confirm-task');
+  await expect(page.locator('#cat-day-list')).toContainText('Build app: Write tests');
+});
+
+test('completing first step of multistep task shows second step in day/night list', async ({ page }) => {
+  await freshPage(page, 'steps');
+  await page.goto('/');
+  await page.fill('#step-task-input', 'Launch rocket');
+  await page.locator('#step-fields input').fill('Fuel up');
+  await page.locator('#step-fields .visibility-select').selectOption('day');
+  await page.click('.btn-add-step-field');
+  await page.locator('#step-fields input >> nth=1').fill('Press launch');
+  await page.locator('#step-fields .visibility-select >> nth=1').selectOption('night');
+  await page.click('.btn-confirm-task');
+  await expect(page.locator('#cat-day-list')).toContainText('Launch rocket: Fuel up');
+  await page.locator('#step-list input[type="checkbox"]').click();
+  await expect(page.locator('#cat-day-list')).not.toContainText('Launch rocket: Fuel up');
+  await expect(page.locator('#cat-night-list')).toContainText('Launch rocket: Press launch');
+});
+
 // ─── Day/Night column removal ─────────────────────────────────────────────────
 
 test('completing a day todo removes it from the day list', async ({ page }) => {

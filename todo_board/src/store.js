@@ -4,10 +4,6 @@ export const todayStr = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-export function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
 export function load(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
   catch { return fallback; }
@@ -27,51 +23,13 @@ export let todos = load('todoboard_todos', []);
 
 export function saveTodos() { save('todoboard_todos', todos); }
 
-export function renderTodos() {
-  const ul = document.getElementById('todo-list');
-  ul.innerHTML = '';
-  const today = todayStr();
-  const visible = todos.map((_, i) => i).filter(i => !todos[i].completedOn || todos[i].completedOn >= today);
-  if (!visible.length) { ul.innerHTML = '<li class="empty-msg">No tasks yet.</li>'; return; }
-  const order = visible.sort((a, b) => todos[a].done - todos[b].done);
-  order.forEach(i => {
-    const t = todos[i];
-    const li = document.createElement('li');
-    if (t.done) li.classList.add('done');
-    if (t.category) li.classList.add(`cat-${t.category}`);
-    li.innerHTML = `
-      <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" />
-      <span class="todo-text">${escHtml(t.text)}</span>
-      <button class="btn-edit" onclick="openEditModal('${TASK_TYPE.TODO}', ${i})">✎</button>
-      <button class="btn-del" onclick="deleteTodo(${i})">✕</button>
-    `;
-    ul.appendChild(li);
-  });
+let _setTodosState = null;
+export function registerTodosSetter(fn) { _setTodosState = fn; }
+
+export function syncTodos(updated) {
+  todos = updated;
+  save('todoboard_todos', updated);
   renderCategoryColumn();
-}
-
-export function addTodo() {
-  const inp = document.getElementById('todo-input');
-  const text = inp.value.trim();
-  if (!text) return;
-  const category = document.getElementById('todo-category').value;
-  todos.push({ id: Date.now(), text, done: false, completedOn: null, category });
-  saveTodos();
-  renderTodos();
-  inp.value = '';
-}
-
-export function toggleTodo(i) {
-  todos[i].done = !todos[i].done;
-  todos[i].completedOn = todos[i].done ? todayStr() : null;
-  saveTodos();
-  renderTodos();
-}
-
-export function deleteTodo(i) {
-  todos.splice(i, 1);
-  saveTodos();
-  renderTodos();
 }
 
 // ─── HABIT TRACKER ────────────────────────────────────────────────────────
@@ -79,52 +37,13 @@ export let habits = load('todoboard_habits', []);
 
 export function saveHabits() { save('todoboard_habits', habits); }
 
-export function renderHabits() {
-  const ul = document.getElementById('habit-list');
-  ul.innerHTML = '';
-  if (!habits.length) { ul.innerHTML = '<li class="empty-msg">No habits yet.</li>'; return; }
-  const today = todayStr();
-  habits.forEach((h, i) => {
-    const loggedToday = h.logs.includes(today);
-    const li = document.createElement('li');
-    if (h.category) li.classList.add(`cat-${h.category}`);
-    li.innerHTML = `
-      <span class="habit-name">${escHtml(h.name)}</span>
-      <span class="habit-count">${h.logs.length}×</span>
-      <button class="btn-habit-log ${loggedToday ? 'done-today' : ''}"
-        ${loggedToday ? 'disabled' : `onclick="logHabit(${i})"`}>
-        ${loggedToday ? '✓ Done' : 'Log'}
-      </button>
-      <button class="btn-edit" onclick="openEditModal('${TASK_TYPE.HABIT}', ${i})">✎</button>
-      <button class="btn-del" onclick="deleteHabit(${i})">✕</button>
-    `;
-    ul.appendChild(li);
-  });
+let _setHabitsState = null;
+export function registerHabitsSetter(fn) { _setHabitsState = fn; }
+
+export function syncHabits(updated) {
+  habits = updated;
+  save('todoboard_habits', updated);
   renderCategoryColumn();
-}
-
-export function addHabit() {
-  const inp = document.getElementById('habit-input');
-  const name = inp.value.trim();
-  if (!name) return;
-  const category = document.getElementById('habit-category').value;
-  habits.push({ id: Date.now(), name, logs: [], category });
-  saveHabits();
-  renderHabits();
-  inp.value = '';
-}
-
-export function logHabit(i) {
-  const today = todayStr();
-  if (!habits[i].logs.includes(today)) habits[i].logs.push(today);
-  saveHabits();
-  renderHabits();
-}
-
-export function deleteHabit(i) {
-  habits.splice(i, 1);
-  saveHabits();
-  renderHabits();
 }
 
 // ─── MULTI-STEP TASKS ─────────────────────────────────────────────────────
@@ -244,13 +163,15 @@ export function saveEdit() {
     todos[editTarget.index].category = category;
     todos[editTarget.index].starred  = starred;
     saveTodos();
-    renderTodos();
+    if (_setTodosState) _setTodosState([...todos]);
+    renderCategoryColumn();
   } else {
     habits[editTarget.index].name     = val;
     habits[editTarget.index].category = category;
     habits[editTarget.index].starred  = starred;
     saveHabits();
-    renderHabits();
+    if (_setHabitsState) _setHabitsState([...habits]);
+    renderCategoryColumn();
   }
   closeEditModal();
 }
@@ -326,8 +247,6 @@ export function scheduleReloadAtMidnight() {
 
 // ─── Expose functions for inline HTML event handlers ──────────────────────
 Object.assign(window, {
-  toggleTodo, deleteTodo, addTodo,
-  logHabit, deleteHabit, addHabit,
   openEditModal, closeEditModal, saveEdit, onModalOverlayClick,
   downloadData,
 });
