@@ -5,8 +5,8 @@ import TodoPanel from './TodoPanel';
 import HabitPanel from './HabitPanel';
 import StepPanel from './StepPanel';
 import {
-  migrate, renderTodos, renderHabits, initStepAddForm, renderStepTasks,
-  addTodo, addHabit, saveEdit, closeEditModal, closeStepEditModal,
+  renderTodos, renderHabits,
+  addTodo, addHabit, saveEdit, closeEditModal,
   scheduleReloadAtMidnight,
 } from './store';
 
@@ -21,20 +21,14 @@ export default function App() {
   };
 
   useEffect(() => {
-    migrate();
     renderTodos();
     renderHabits();
-    initStepAddForm();
-    renderStepTasks();
 
     document.getElementById('todo-input').addEventListener('keydown', e => { if (e.key === 'Enter') addTodo(); });
     document.getElementById('habit-input').addEventListener('keydown', e => { if (e.key === 'Enter') addHabit(); });
     document.getElementById('modal-input').addEventListener('keydown', e => {
       if (e.key === 'Enter') saveEdit();
       if (e.key === 'Escape') closeEditModal();
-    });
-    document.getElementById('step-edit-modal').addEventListener('keydown', e => {
-      if (e.key === 'Escape') closeStepEditModal();
     });
 
     scheduleReloadAtMidnight();

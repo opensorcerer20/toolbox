@@ -302,7 +302,7 @@ test('edit modal saves on Enter key', async ({ page }) => {
 test('edit modal cancel does not save todo changes', async ({ page }) => {
   await addTodoAndOpenEdit(page, 'Keep this');
   await page.fill('#modal-input', 'Changed text');
-  await page.click('.btn-modal-cancel');
+  await page.click('#edit-modal .btn-modal-cancel');
   await expect(page.locator('#todo-list')).toContainText('Keep this');
   await expect(page.locator('#edit-modal')).toHaveClass(/hidden/);
 });

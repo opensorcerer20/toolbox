@@ -128,14 +128,19 @@ export function deleteHabit(i) {
 }
 
 // ─── MULTI-STEP TASKS ─────────────────────────────────────────────────────
+// stepTasks is kept here so renderCategoryColumn can read it.
+// StepPanel component mutates it via syncStepTasks.
 export let stepTasks = load('todoboard_stepTasks', []);
-export let stepEditTarget = null;
-
-const expandedSteps = new Set();
 
 export function saveStepTasks() { save('todoboard_stepTasks', stepTasks); }
 
-// ─── Shared form element factories ────────────────────────────────────────
+export function syncStepTasks(tasks) {
+  stepTasks = tasks;
+  save('todoboard_stepTasks', tasks);
+  renderCategoryColumn();
+}
+
+// ─── Shared form element factories (used by todo/habit edit modal) ─────────
 export function makeCategorySelect(category, extraClass = '') {
   const sel = document.createElement('select');
   sel.className = ['visibility-select', extraClass].filter(Boolean).join(' ');
@@ -161,254 +166,12 @@ export function makeStarBtn(starred) {
   return btn;
 }
 
-export function makeStepInputRow(text = '', count = 1, category = CATEGORY.NIGHT, starred = false) {
-  const row = document.createElement('div');
-  row.className = 'step-input-row';
-
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.placeholder = `Step ${count}…`;
-  input.value = text;
-  row.appendChild(input);
-
-  row.appendChild(makeCategorySelect(category, 'step-row-select'));
-
-  const starBtn = makeStarBtn(starred);
-  row.appendChild(starBtn);
-
-  const delBtn = document.createElement('button');
-  delBtn.className = 'btn-del';
-  delBtn.textContent = '✕';
-  delBtn.onclick = () => removeStepField(delBtn);
-  row.appendChild(delBtn);
-
-  return row;
-}
-
-export function renderStepTaskForm(containerEl, { name = '', steps = [], nameId, fieldsId, confirmFn, confirmLabel = 'Add Task', cancelFn = null }) {
-  containerEl.innerHTML = '';
-
-  const nameRow = document.createElement('div');
-  nameRow.className = 'add-row';
-  const nameInput = document.createElement('input');
-  nameInput.id = nameId;
-  nameInput.type = 'text';
-  nameInput.placeholder = 'Task name…';
-  nameInput.value = name;
-  nameRow.appendChild(nameInput);
-  containerEl.appendChild(nameRow);
-
-  const fieldsDiv = document.createElement('div');
-  fieldsDiv.className = 'step-add-steps';
-  fieldsDiv.id = fieldsId;
-  const stepArr = steps.length ? steps : [null];
-  stepArr.forEach((s, i) => {
-    const text = s ? (typeof s === 'string' ? s : s.text) : '';
-    const cat  = s && typeof s === 'object' ? (s.category || CATEGORY.NIGHT) : CATEGORY.NIGHT;
-    const star = s && typeof s === 'object' ? !!s.starred : false;
-    fieldsDiv.appendChild(makeStepInputRow(text, i + 1, cat, star));
-  });
-  containerEl.appendChild(fieldsDiv);
-
-  const actionsDiv = document.createElement('div');
-  actionsDiv.className = 'step-add-steps step-add-actions';
-
-  const addFieldBtn = document.createElement('button');
-  addFieldBtn.className = 'btn-add-step-field';
-  addFieldBtn.textContent = '+ Step';
-  addFieldBtn.onclick = () => {
-    const c = document.getElementById(fieldsId);
-    c.appendChild(makeStepInputRow('', c.querySelectorAll('.step-input-row').length + 1));
-  };
-  actionsDiv.appendChild(addFieldBtn);
-
-  if (cancelFn) {
-    const cancelBtn = document.createElement('button');
-    cancelBtn.className = 'btn-modal-cancel';
-    cancelBtn.textContent = 'Cancel';
-    cancelBtn.onclick = cancelFn;
-    actionsDiv.appendChild(cancelBtn);
-  }
-
-  const confirmBtn = document.createElement('button');
-  confirmBtn.className = 'btn-confirm-task';
-  confirmBtn.textContent = confirmLabel;
-  confirmBtn.onclick = confirmFn;
-  actionsDiv.appendChild(confirmBtn);
-
-  containerEl.appendChild(actionsDiv);
-}
-
-export function initStepAddForm() {
-  renderStepTaskForm(document.getElementById('step-builder'), {
-    nameId: 'step-task-input',
-    fieldsId: 'step-fields',
-    confirmFn: addStepTask,
-    confirmLabel: 'Add Task',
-  });
-}
-
-export function toggleExpand(taskId) {
-  if (expandedSteps.has(taskId)) expandedSteps.delete(taskId);
-  else expandedSteps.add(taskId);
-  renderStepTasks();
-}
-
-export function renderStepTasks() {
-  const ul = document.getElementById('step-list');
-  ul.innerHTML = '';
-  if (!stepTasks.length) { ul.innerHTML = '<li class="empty-msg">No step tasks yet.</li>'; return; }
-  stepTasks.forEach((task, ti) => {
-    const done = task.current >= task.steps.length;
-    const expanded = expandedSteps.has(task.id);
-    const progress = `${Math.min(task.current, task.steps.length)}/${task.steps.length}`;
-    const arrow = expanded ? '▼' : '▶';
-
-    let stepsHtml;
-    if (expanded) {
-      stepsHtml = `<div class="step-all-steps">` +
-        task.steps.map((s, si) => {
-          const cat  = s.category || CATEGORY.NIGHT;
-          const star = s.starred ? '<span class="cat-star step-cat-star">★</span>' : '';
-          if (si < task.current) {
-            return `<div class="step-row past-step cat-${cat}">${star}${escHtml(s.text)}</div>`;
-          } else if (si === task.current && !done) {
-            return `<div class="step-row current-step cat-${cat}">
-               <input type="checkbox" onchange="advanceStep(${ti})" />
-               ${star}<span class="step-current-text">${escHtml(s.text)}</span>
-             </div>`;
-          } else {
-            return `<div class="step-row future-step cat-${cat}">${star}${escHtml(s.text)}</div>`;
-          }
-        }).join('') +
-        (done ? `<div class="step-row"><span class="step-done-label">✓ All steps complete!</span></div>` : '') +
-      `</div>`;
-    } else {
-      const s = task.steps[task.current];
-      const cat  = done ? '' : (s.category || CATEGORY.NIGHT);
-      const star = (!done && s.starred) ? '<span class="cat-star step-cat-star">★</span>' : '';
-      stepsHtml = `<div class="step-current${cat ? ` cat-${cat}` : ''}">
-        ${done
-          ? `<span class="step-done-label">✓ All steps complete!</span>`
-          : `<input type="checkbox" onchange="advanceStep(${ti})" />
-             ${star}<span class="step-current-text">${escHtml(s.text)}</span>`
-        }
-      </div>`;
-    }
-
-    const li = document.createElement('li');
-    li.innerHTML = `
-      <div class="step-task-name">
-        <span class="step-name-left">
-          <button class="btn-expand" onclick="toggleExpand(${task.id})" title="Expand steps">${arrow}</button>
-          ${escHtml(task.name)}
-        </span>
-        <span class="step-name-right">
-          <span class="step-progress">${progress}</span>
-          <button class="btn-edit" onclick="openStepEditModal(${ti})">✎</button>
-          <button class="btn-del" onclick="deleteStepTask(${ti})">✕</button>
-        </span>
-      </div>
-      ${stepsHtml}
-    `;
-    ul.appendChild(li);
-  });
-  renderCategoryColumn();
-}
-
-export function removeStepField(btn) {
-  const container = btn.closest('.step-add-steps');
-  if (container.querySelectorAll('.step-input-row').length <= 1) return;
-  btn.closest('.step-input-row').remove();
-}
-
-export function addStepTask() {
-  const name = document.getElementById('step-task-input').value.trim();
-  if (!name) return;
-  const steps = Array.from(document.querySelectorAll('#step-fields .step-input-row'))
-    .map(row => ({
-      text:     row.querySelector('input[type="text"]').value.trim(),
-      category: row.querySelector('select').value,
-      starred:  row.querySelector('.btn-star').classList.contains('starred'),
-    })).filter(s => s.text);
-  if (!steps.length) return;
-  stepTasks.push({ id: Date.now(), name, steps, current: 0 });
-  saveStepTasks();
-  renderStepTasks();
-  initStepAddForm();
-}
-
-export function advanceStep(ti) {
-  stepTasks[ti].current += 1;
-  saveStepTasks();
-  renderStepTasks();
-}
-
-export function deleteStepTask(ti) {
-  expandedSteps.delete(stepTasks[ti].id);
-  stepTasks.splice(ti, 1);
-  saveStepTasks();
-  renderStepTasks();
-}
-
-// ─── Step-task edit modal ─────────────────────────────────────────────────
-export function openStepEditModal(ti) {
-  stepEditTarget = ti;
-  const task = stepTasks[ti];
-  renderStepTaskForm(document.getElementById('step-edit-form-body'), {
-    name: task.name,
-    steps: task.steps,
-    nameId: 'step-edit-name',
-    fieldsId: 'step-edit-fields',
-    confirmFn: saveStepEdit,
-    confirmLabel: 'Save',
-    cancelFn: closeStepEditModal,
-  });
-  document.getElementById('step-edit-modal').classList.remove('hidden');
-  const nameInput = document.getElementById('step-edit-name');
-  nameInput.focus();
-  nameInput.select();
-  nameInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter') saveStepEdit();
-    if (e.key === 'Escape') closeStepEditModal();
-  });
-}
-
-export function closeStepEditModal() {
-  stepEditTarget = null;
-  document.getElementById('step-edit-modal').classList.add('hidden');
-}
-
-export function saveStepEdit() {
-  if (stepEditTarget === null) return;
-  const name = document.getElementById('step-edit-name').value.trim();
-  if (!name) return;
-  const newSteps = Array.from(document.querySelectorAll('#step-edit-fields .step-input-row'))
-    .map(row => ({
-      text:     row.querySelector('input[type="text"]').value.trim(),
-      category: row.querySelector('select').value,
-      starred:  row.querySelector('.btn-star').classList.contains('starred'),
-    })).filter(s => s.text);
-  if (!newSteps.length) return;
-  const task = stepTasks[stepEditTarget];
-  task.name = name;
-  task.steps = newSteps;
-  task.current = Math.min(task.current, task.steps.length);
-  saveStepTasks();
-  renderStepTasks();
-  closeStepEditModal();
-}
-
-export function onStepModalOverlayClick(e) {
-  if (e.target === document.getElementById('step-edit-modal')) closeStepEditModal();
-}
-
 // ─── Category overview column ─────────────────────────────────────────────
 export function renderCategoryColumn() {
-  const dayList  = document.getElementById('cat-day-list');
+  const dayList   = document.getElementById('cat-day-list');
   const nightList = document.getElementById('cat-night-list');
   if (!dayList || !nightList) return;
-  dayList.innerHTML  = '';
+  dayList.innerHTML   = '';
   nightList.innerHTML = '';
 
   const items = [
@@ -435,11 +198,11 @@ export function renderCategoryColumn() {
     (category === CATEGORY.DAY ? dayList : nightList).appendChild(li);
   });
 
-  if (!dayList.children.length)  dayList.innerHTML  = '<li class="empty-msg">None.</li>';
+  if (!dayList.children.length)   dayList.innerHTML   = '<li class="empty-msg">None.</li>';
   if (!nightList.children.length) nightList.innerHTML = '<li class="empty-msg">None.</li>';
 }
 
-// ─── Edit modal ───────────────────────────────────────────────────────────
+// ─── Edit modal (todos & habits) ──────────────────────────────────────────
 export let editTarget = null;
 
 export function openEditModal(type, index) {
@@ -472,20 +235,20 @@ export function closeEditModal() {
 
 export function saveEdit() {
   if (!editTarget) return;
-  const val = document.getElementById('modal-input').value.trim();
+  const val      = document.getElementById('modal-input').value.trim();
   if (!val) return;
   const category = document.getElementById('modal-category').value;
-  const starred = document.getElementById('modal-star').classList.contains('starred');
+  const starred  = document.getElementById('modal-star').classList.contains('starred');
   if (editTarget.type === TASK_TYPE.TODO) {
-    todos[editTarget.index].text = val;
+    todos[editTarget.index].text     = val;
     todos[editTarget.index].category = category;
-    todos[editTarget.index].starred = starred;
+    todos[editTarget.index].starred  = starred;
     saveTodos();
     renderTodos();
   } else {
-    habits[editTarget.index].name = val;
+    habits[editTarget.index].name     = val;
     habits[editTarget.index].category = category;
-    habits[editTarget.index].starred = starred;
+    habits[editTarget.index].starred  = starred;
     saveHabits();
     renderHabits();
   }
@@ -566,7 +329,5 @@ Object.assign(window, {
   toggleTodo, deleteTodo, addTodo,
   logHabit, deleteHabit, addHabit,
   openEditModal, closeEditModal, saveEdit, onModalOverlayClick,
-  openStepEditModal, closeStepEditModal, saveStepEdit, onStepModalOverlayClick,
-  addStepTask, advanceStep, deleteStepTask, toggleExpand,
-  removeStepField, downloadData,
+  downloadData,
 });
