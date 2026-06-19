@@ -1,10 +1,14 @@
-const { defineConfig } = require('@playwright/test');
-const path = require('path');
+import { defineConfig } from '@playwright/test';
 
-module.exports = defineConfig({
+export default defineConfig({
   testDir: './tests',
   use: {
-    baseURL: 'file://' + path.resolve(__dirname, 'index.html'),
+    baseURL: 'http://localhost:5666',
+  },
+  webServer: {
+    command: 'npx vite',
+    port: 5666,
+    reuseExistingServer: !process.env.CI,
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },

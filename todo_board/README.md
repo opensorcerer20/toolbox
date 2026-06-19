@@ -45,3 +45,32 @@ To open the interactive Playwright UI:
 ```bash
 npm run test:ui
 ```
+
+## To Do
+- finish converting everything to preact
+- "yesterlog"
+- rearrange multistep steps
+
+
+## Problems and Solutions
+[x] With so many to-dos, can't easily tell which are more important
+  - Solution: add a star and put them at the top of the list
+
+[ ] Some daily tasks must be reported after the fact eg "did you limit your dr pepper drinking to 12 ounces"
+  - Solution 1: "Yesterdaily" report where you answer which tasks were done and which werent
+  - Solution 2: Each habit is of type "today" or "yesterday" and logs to the appropriate day when clicked. The "Log" button changes to "Y-Log" for a yesterday log
+
+[x] Overcrowded UI
+  - Solution: Use tabbed format to separate out more details on each task, while the home tab has the overview of what needs to be done
+
+[ ] Need satisfaction in seeing work done
+  - Solution: Have a log that shows recent activity. When an item is completed/uncompleted, update that data's completedAt, then reload the log to show occurences for the last few days
+
+[ ] Some tasks take physical or mental willpower
+  - Solution: Add a minimum required physical/mental willpower, plus a gauge that shows how much of each have been used in completed tasks
+
+[x] Lots of functionality relies on JavaScript
+  - Solution: switch to Vite and Preact and JSX
+
+[x] I prefer to have multiple steps planned for bigger tasks
+  - Solution: add functionality for tasks with multiple steps, where only the current step (incomplete and ordered by cardinality) is shown as a task

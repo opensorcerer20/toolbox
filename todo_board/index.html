@@ -7,64 +7,7 @@
   <link rel="stylesheet" href="index.css" />
 </head>
 <body>
-  <h1>To Do Board</h1>
-  <button class="btn-download" onclick="downloadData()">Download JSON</button>
-  <p class="tagline">"Take one small step forward today, that's it"</p>
-  <div class="board">
-
-    <!-- ===== CATEGORY OVERVIEW ===== -->
-    <div class="category-col">
-      <div class="panel category-panel">
-        <div class="cat-section">
-          <h2>Day</h2>
-          <ul id="cat-day-list" class="cat-list"></ul>
-        </div>
-        <div class="cat-divider"></div>
-        <div class="cat-section">
-          <h2>Night</h2>
-          <ul id="cat-night-list" class="cat-list"></ul>
-        </div>
-      </div>
-    </div>
-
-    <div class="left-col">
-      <!-- ===== TO-DO LIST ===== -->
-      <div class="panel">
-        <h2>To-Do</h2>
-        <div class="add-row">
-          <input id="todo-input" type="text" placeholder="New task…" />
-          <select id="todo-category" class="visibility-select">
-            <option value="night">Night</option>
-            <option value="day">Day</option>
-          </select>
-          <button class="btn-add" onclick="addTodo()">Add</button>
-        </div>
-        <ul id="todo-list"></ul>
-      </div>
-
-      <!-- ===== HABIT TRACKER ===== -->
-      <div class="panel">
-        <h2>Daily Habits</h2>
-        <div class="add-row">
-          <input id="habit-input" type="text" placeholder="New habit…" />
-          <select id="habit-category" class="visibility-select">
-            <option value="night">Night</option>
-            <option value="day">Day</option>
-          </select>
-          <button class="btn-add" onclick="addHabit()">Add</button>
-        </div>
-        <ul id="habit-list"></ul>
-      </div>
-    </div>
-
-    <!-- ===== MULTI-STEP TASKS ===== -->
-    <div class="panel">
-      <h2>Step-by-Step</h2>
-      <div id="step-builder"></div>
-      <ul id="step-list"></ul>
-    </div>
-
-  </div>
+  <div id="app"></div>
 
   <!-- Step-task edit modal -->
   <div id="step-edit-modal" class="modal-overlay hidden" onclick="onStepModalOverlayClick(event)">
@@ -91,6 +34,6 @@
     </div>
   </div>
 
-  <script src="index.js"></script>
+  <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

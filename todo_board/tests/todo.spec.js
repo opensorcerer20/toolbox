@@ -1,25 +1,23 @@
-const { test, expect } = require('@playwright/test');
-const path = require('path');
+import { test, expect } from '@playwright/test';
 
-const url = 'file://' + path.resolve(__dirname, '../index.html');
-
-function freshPage(page) {
-  return page.addInitScript(() => {
+function freshPage(page, tab = 'todo') {
+  return page.addInitScript((t) => {
     localStorage.clear();
-  });
+    localStorage.setItem('todoboard_activeTab', t);
+  }, tab);
 }
 
 async function addTodoAndOpenEdit(page, text) {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'todo');
+  await page.goto('/');
   await page.fill('#todo-input', text);
   await page.click('.btn-add');
   await page.locator('#todo-list .btn-edit').click();
 }
 
 async function addHabitAndOpenEdit(page, text) {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'habits');
+  await page.goto('/');
   await page.fill('#habit-input', text);
   await page.click('.btn-add >> nth=1');
   await page.locator('#habit-list .btn-edit').click();
@@ -28,16 +26,16 @@ async function addHabitAndOpenEdit(page, text) {
 // ─── To-Do ───────────────────────────────────────────────────────────────────
 
 test('adds a todo item', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'todo');
+  await page.goto('/');
   await page.fill('#todo-input', 'Buy milk');
   await page.click('.btn-add');
   await expect(page.locator('#todo-list')).toContainText('Buy milk');
 });
 
 test('checks off a todo item', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'todo');
+  await page.goto('/');
   await page.fill('#todo-input', 'Walk dog');
   await page.click('.btn-add');
   await page.locator('#todo-list li input[type="checkbox"]').click();
@@ -45,8 +43,8 @@ test('checks off a todo item', async ({ page }) => {
 });
 
 test('deletes a todo item', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'todo');
+  await page.goto('/');
   await page.fill('#todo-input', 'Delete me');
   await page.click('.btn-add');
   await page.locator('#todo-list li .btn-del').click();
@@ -54,18 +52,21 @@ test('deletes a todo item', async ({ page }) => {
 });
 
 test('persists todos in localStorage', async ({ page }) => {
-  await page.goto(url);
-  await page.evaluate(() => localStorage.clear());
-  await page.goto(url);
+  await page.goto('/');
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('todoboard_activeTab', 'todo');
+  });
+  await page.goto('/');
   await page.fill('#todo-input', 'Persisted task');
   await page.click('.btn-add');
-  await page.goto(url);
+  await page.goto('/');
   await expect(page.locator('#todo-list')).toContainText('Persisted task');
 });
 
 test('adds todo on Enter key', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'todo');
+  await page.goto('/');
   await page.fill('#todo-input', 'Enter task');
   await page.press('#todo-input', 'Enter');
   await expect(page.locator('#todo-list')).toContainText('Enter task');
@@ -74,16 +75,16 @@ test('adds todo on Enter key', async ({ page }) => {
 // ─── Habits ───────────────────────────────────────────────────────────────────
 
 test('adds a habit', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'habits');
+  await page.goto('/');
   await page.fill('#habit-input', 'Meditate');
   await page.click('.btn-add >> nth=1');
   await expect(page.locator('#habit-list')).toContainText('Meditate');
 });
 
 test('logs a habit and disables button for today', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'habits');
+  await page.goto('/');
   await page.fill('#habit-input', 'Exercise');
   await page.click('.btn-add >> nth=1');
   await page.locator('#habit-list .btn-habit-log').click();
@@ -93,8 +94,8 @@ test('logs a habit and disables button for today', async ({ page }) => {
 });
 
 test('habit count increments on log', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'habits');
+  await page.goto('/');
   await page.fill('#habit-input', 'Read');
   await page.click('.btn-add >> nth=1');
   await expect(page.locator('#habit-list .habit-count')).toContainText('0×');
@@ -103,8 +104,8 @@ test('habit count increments on log', async ({ page }) => {
 });
 
 test('deletes a habit', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'habits');
+  await page.goto('/');
   await page.fill('#habit-input', 'Stretch');
   await page.click('.btn-add >> nth=1');
   await page.locator('#habit-list .btn-del').click();
@@ -114,8 +115,8 @@ test('deletes a habit', async ({ page }) => {
 // ─── Step-by-step ─────────────────────────────────────────────────────────────
 
 test('adds a step task and shows first step', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'steps');
+  await page.goto('/');
   await page.fill('#step-task-input', 'Launch rocket');
   await page.locator('#step-fields input').fill('Fuel up');
   await page.click('.btn-add-step-field');
@@ -127,8 +128,8 @@ test('adds a step task and shows first step', async ({ page }) => {
 });
 
 test('checking off current step advances to next', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'steps');
+  await page.goto('/');
   await page.fill('#step-task-input', 'Cook dinner');
   await page.locator('#step-fields input').fill('Chop veggies');
   await page.click('.btn-add-step-field');
@@ -140,8 +141,8 @@ test('checking off current step advances to next', async ({ page }) => {
 });
 
 test('completing all steps shows done label', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'steps');
+  await page.goto('/');
   await page.fill('#step-task-input', 'One step task');
   await page.locator('#step-fields input').fill('Only step');
   await page.click('.btn-confirm-task');
@@ -150,8 +151,8 @@ test('completing all steps shows done label', async ({ page }) => {
 });
 
 test('expand arrow shows all steps', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'steps');
+  await page.goto('/');
   await page.fill('#step-task-input', 'Multi step');
   await page.locator('#step-fields input').fill('Step A');
   await page.click('.btn-add-step-field');
@@ -163,8 +164,8 @@ test('expand arrow shows all steps', async ({ page }) => {
 });
 
 test('deletes a step task', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'steps');
+  await page.goto('/');
   await page.fill('#step-task-input', 'Temp task');
   await page.locator('#step-fields input').fill('Some step');
   await page.click('.btn-confirm-task');
@@ -175,8 +176,8 @@ test('deletes a step task', async ({ page }) => {
 // ─── Step-task edit modal ─────────────────────────────────────────────────────
 
 async function addStepTaskAndOpenEdit(page, name, steps) {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'steps');
+  await page.goto('/');
   await page.fill('#step-task-input', name);
   await page.locator('#step-fields input').fill(steps[0]);
   for (let i = 1; i < steps.length; i++) {
@@ -268,13 +269,11 @@ test('step edit modal can remove a step', async ({ page }) => {
 
 test('step edit preserves progress on name-only change', async ({ page }) => {
   await addStepTaskAndOpenEdit(page, 'Progress task', ['Step 1', 'Step 2']);
-  // Close modal, advance past step 1, then edit name
   await page.click('#step-edit-modal .btn-modal-cancel');
   await page.locator('#step-list input[type="checkbox"]').click();
   await page.locator('#step-list .btn-edit').click();
   await page.fill('#step-edit-name', 'Renamed task');
   await page.click('#step-edit-modal .btn-confirm-task');
-  // Should still show step 2 as current (progress preserved)
   await expect(page.locator('#step-list')).toContainText('Step 2');
   await expect(page.locator('#step-list')).not.toContainText('Step 1');
 });
@@ -326,8 +325,8 @@ test('edit modal closes on backdrop click without saving', async ({ page }) => {
 });
 
 test('edit modal updates todo category', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'todo');
+  await page.goto('/');
   await page.fill('#todo-input', 'Switch task');
   await page.selectOption('#todo-category', 'night');
   await page.click('.btn-add');
@@ -349,8 +348,8 @@ test('edit modal saves updated habit name', async ({ page }) => {
 });
 
 test('edit modal updates habit category', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'habits');
+  await page.goto('/');
   await page.fill('#habit-input', 'Switch habit');
   await page.selectOption('#habit-category', 'night');
   await page.click('.btn-add >> nth=1');
@@ -363,8 +362,8 @@ test('edit modal updates habit category', async ({ page }) => {
 // ─── Day/Night column removal ─────────────────────────────────────────────────
 
 test('completing a day todo removes it from the day list', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'todo');
+  await page.goto('/');
   await page.selectOption('#todo-category', 'day');
   await page.fill('#todo-input', 'Day errand');
   await page.click('.btn-add');
@@ -374,8 +373,8 @@ test('completing a day todo removes it from the day list', async ({ page }) => {
 });
 
 test('completing a night todo removes it from the night list', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'todo');
+  await page.goto('/');
   await page.selectOption('#todo-category', 'night');
   await page.fill('#todo-input', 'Night task');
   await page.click('.btn-add');
@@ -385,8 +384,8 @@ test('completing a night todo removes it from the night list', async ({ page }) 
 });
 
 test('logging a day habit removes it from the day list', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'habits');
+  await page.goto('/');
   await page.selectOption('#habit-category', 'day');
   await page.fill('#habit-input', 'Morning run');
   await page.click('.btn-add >> nth=1');
@@ -396,8 +395,8 @@ test('logging a day habit removes it from the day list', async ({ page }) => {
 });
 
 test('logging a night habit removes it from the night list', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'habits');
+  await page.goto('/');
   await page.selectOption('#habit-category', 'night');
   await page.fill('#habit-input', 'Evening read');
   await page.click('.btn-add >> nth=1');
@@ -407,8 +406,8 @@ test('logging a night habit removes it from the night list', async ({ page }) =>
 });
 
 test('unchecking a todo restores it to the day/night list', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'todo');
+  await page.goto('/');
   await page.selectOption('#todo-category', 'day');
   await page.fill('#todo-input', 'Restore me');
   await page.click('.btn-add');
@@ -436,8 +435,8 @@ test('starred todo persists after save and modal reopen', async ({ page }) => {
 });
 
 test('starred todo appears first in day column and shows star icon', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'todo');
+  await page.goto('/');
   await page.selectOption('#todo-category', 'day');
   await page.fill('#todo-input', 'First added');
   await page.click('.btn-add');
@@ -452,8 +451,8 @@ test('starred todo appears first in day column and shows star icon', async ({ pa
 });
 
 test('starred habit appears first in night column and shows star icon', async ({ page }) => {
-  await freshPage(page);
-  await page.goto(url);
+  await freshPage(page, 'habits');
+  await page.goto('/');
   await page.selectOption('#habit-category', 'night');
   await page.fill('#habit-input', 'First habit');
   await page.click('.btn-add >> nth=1');
