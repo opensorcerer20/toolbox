@@ -38,6 +38,15 @@
     button:hover { filter: brightness(1.1); }
     .small { font-size: .9rem; color: var(--muted); }
     .footer { margin-top: 1rem; color: var(--muted); }
+    .section-divider { margin: 2rem 0 1rem; border-top: 1px solid var(--border); padding-top: 1.5rem; }
+    .section-divider h2 { margin: 0 0 0.25rem; font-size: 1.25rem; }
+    input[type="text"] {
+      width: 100%; border-radius: .5rem; padding: .75rem; line-height: 1.4;
+      border: 1px solid var(--border); background: #0b1220; color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.9rem;
+    }
+    textarea.json-area { min-height: unset; resize: vertical; }
 
     /* Mobile-first: switch to two columns at >=640px */
     @media (min-width: 640px) {
@@ -81,6 +90,28 @@ Charlie,40,Denver"></textarea>
     </div>
 
     <div class="footer small">Tip: Paste CSV on the left, click Convert, then copy or download JSON.</div>
+
+    <div class="section-divider">
+      <h2>JSON Formatter</h2>
+      <p class="note">Paste JSON below to get a minified single-line version, or paste minified JSON to expand it.</p>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <label for="json-pretty-input">JSON (formatted)</label>
+        <textarea id="json-pretty-input" class="json-area" rows="10" placeholder='[
+  {
+    "name": "Alice",
+    "age": 30
+  }
+]'></textarea>
+      </div>
+
+      <div class="panel">
+        <label for="json-minified-output">Minified JSON</label>
+        <input type="text" id="json-minified-output" placeholder='[{"name":"Alice","age":30}]'>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -225,6 +256,30 @@ Charlie,40,Denver"></textarea>
       const text = elCsv.value.trim();
       const json = csvToJsonArray(text);
       elJson.value = stringifyJsonPretty(json);
+    });
+
+    // JSON formatter — bidirectional sync
+    const elJsonPretty = document.getElementById('json-pretty-input');
+    const elJsonMinified = document.getElementById('json-minified-output');
+
+    elJsonPretty.addEventListener('input', () => {
+      const text = elJsonPretty.value.trim();
+      if (!text) { elJsonMinified.value = ''; return; }
+      try {
+        elJsonMinified.value = JSON.stringify(JSON.parse(text));
+      } catch {
+        elJsonMinified.value = '';
+      }
+    });
+
+    elJsonMinified.addEventListener('input', () => {
+      const text = elJsonMinified.value.trim();
+      if (!text) { elJsonPretty.value = ''; return; }
+      try {
+        elJsonPretty.value = JSON.stringify(JSON.parse(text), null, 2);
+      } catch {
+        // leave pretty box unchanged while input is mid-edit
+      }
     });
   </script>
 </body>
