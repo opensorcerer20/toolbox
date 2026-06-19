@@ -15,6 +15,14 @@ function load(key, fallback) {
 
 function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
+const CATEGORY  = Object.freeze({ DAY: 'day', NIGHT: 'night' });
+const TASK_TYPE = Object.freeze({ TODO: 'todo', HABIT: 'habit', STEP_TASK: 'stepTask' });
+
+function createTask({ type, name, category, starred = false }) {
+  return { id: Date.now(), type, name, category, starred, completedOn: null, logs: [] };
+}
+
+
 // ─── TO-DO LIST ───────────────────────────────────────────────────────────
 let todos = load('todoboard_todos', []);
 
@@ -35,7 +43,7 @@ function renderTodos() {
     li.innerHTML = `
       <input type="checkbox" ${t.done ? 'checked' : ''} onchange="toggleTodo(${i})" />
       <span class="todo-text">${escHtml(t.text)}</span>
-      <button class="btn-edit" onclick="openEditModal('todo', ${i})">✎</button>
+      <button class="btn-edit" onclick="openEditModal('${TASK_TYPE.TODO}', ${i})">✎</button>
       <button class="btn-del" onclick="deleteTodo(${i})">✕</button>
     `;
     ul.appendChild(li);
@@ -90,7 +98,7 @@ function renderHabits() {
         ${loggedToday ? 'disabled' : `onclick="logHabit(${i})"`}>
         ${loggedToday ? '✓ Done' : 'Log'}
       </button>
-      <button class="btn-edit" onclick="openEditModal('habit', ${i})">✎</button>
+      <button class="btn-edit" onclick="openEditModal('${TASK_TYPE.HABIT}', ${i})">✎</button>
       <button class="btn-del" onclick="deleteHabit(${i})">✕</button>
     `;
     ul.appendChild(li);
@@ -137,7 +145,7 @@ function saveStepTasks() { save('todoboard_stepTasks', stepTasks); }
 function makeCategorySelect(category, extraClass = '') {
   const sel = document.createElement('select');
   sel.className = ['visibility-select', extraClass].filter(Boolean).join(' ');
-  ['night', 'day'].forEach(val => {
+  [CATEGORY.NIGHT, CATEGORY.DAY].forEach(val => {
     const opt = document.createElement('option');
     opt.value = val;
     opt.textContent = val.charAt(0).toUpperCase() + val.slice(1);
@@ -160,7 +168,7 @@ function makeStarBtn(starred) {
 }
 
 // Builds a single step input row DOM node
-function makeStepInputRow(text = '', count = 1, category = 'night', starred = false) {
+function makeStepInputRow(text = '', count = 1, category = CATEGORY.NIGHT, starred = false) {
   const row = document.createElement('div');
   row.className = 'step-input-row';
 
@@ -205,7 +213,7 @@ function renderStepTaskForm(containerEl, { name = '', steps = [], nameId, fields
   const stepArr = steps.length ? steps : [null];
   stepArr.forEach((s, i) => {
     const text = s ? (typeof s === 'string' ? s : s.text) : '';
-    const cat  = s && typeof s === 'object' ? (s.category || 'night') : 'night';
+    const cat  = s && typeof s === 'object' ? (s.category || CATEGORY.NIGHT) : CATEGORY.NIGHT;
     const star = s && typeof s === 'object' ? !!s.starred : false;
     fieldsDiv.appendChild(makeStepInputRow(text, i + 1, cat, star));
   });
@@ -269,7 +277,7 @@ function renderStepTasks() {
     if (expanded) {
       stepsHtml = `<div class="step-all-steps">` +
         task.steps.map((s, si) => {
-          const cat  = s.category || 'night';
+          const cat  = s.category || CATEGORY.NIGHT;
           const star = s.starred ? '<span class="cat-star step-cat-star">★</span>' : '';
           if (si < task.current) {
             return `<div class="step-row past-step cat-${cat}">${star}${escHtml(s.text)}</div>`;
@@ -286,7 +294,7 @@ function renderStepTasks() {
       `</div>`;
     } else {
       const s = task.steps[task.current];
-      const cat  = done ? '' : (s.category || 'night');
+      const cat  = done ? '' : (s.category || CATEGORY.NIGHT);
       const star = (!done && s.starred) ? '<span class="cat-star step-cat-star">★</span>' : '';
       stepsHtml = `<div class="step-current${cat ? ` cat-${cat}` : ''}">
         ${done
@@ -314,6 +322,7 @@ function renderStepTasks() {
     `;
     ul.appendChild(li);
   });
+  renderCategoryColumn();
 }
 
 function removeStepField(btn) {
@@ -411,8 +420,12 @@ function renderCategoryColumn() {
   nightList.innerHTML = '';
 
   const items = [
-    ...todos.filter(t => !t.done).map(t => ({ label: t.text, category: t.category || 'day', starred: !!t.starred })),
-    ...habits.filter(h => !h.logs.includes(todayStr())).map(h => ({ label: h.name, category: h.category || 'day', starred: !!h.starred })),
+    ...todos.filter(t => !t.done).map(t => ({ label: t.text, category: t.category || CATEGORY.DAY, starred: !!t.starred })),
+    ...habits.filter(h => !h.logs.includes(todayStr())).map(h => ({ label: h.name, category: h.category || CATEGORY.DAY, starred: !!h.starred })),
+    ...stepTasks.filter(t => t.current < t.steps.length).map(t => {
+      const s = t.steps[t.current];
+      return { label: `${t.name}: ${s.text}`, category: s.category || CATEGORY.NIGHT, starred: !!s.starred };
+    }),
   ];
 
   items.sort((a, b) => b.starred - a.starred);
@@ -427,7 +440,7 @@ function renderCategoryColumn() {
       li.appendChild(star);
     }
     li.appendChild(document.createTextNode(label));
-    (category === 'day' ? dayList : nightList).appendChild(li);
+    (category === CATEGORY.DAY ? dayList : nightList).appendChild(li);
   });
 
   if (!dayList.children.length)  dayList.innerHTML  = '<li class="empty-msg">None.</li>';
@@ -439,13 +452,13 @@ let editTarget = null;
 
 function openEditModal(type, index) {
   editTarget = { type, index };
-  const item = type === 'todo' ? todos[index] : habits[index];
+  const item = type === TASK_TYPE.TODO ? todos[index] : habits[index];
   const inp = document.getElementById('modal-input');
-  inp.value = type === 'todo' ? item.text : item.name;
+  inp.value = type === TASK_TYPE.TODO ? item.text : item.name;
 
   const catSlot = document.getElementById('modal-category-slot');
   catSlot.innerHTML = '';
-  const catSel = makeCategorySelect(item.category || 'night', 'modal-category-select');
+  const catSel = makeCategorySelect(item.category || CATEGORY.NIGHT, 'modal-category-select');
   catSel.id = 'modal-category';
   catSlot.appendChild(catSel);
 
@@ -471,7 +484,7 @@ function saveEdit() {
   if (!val) return;
   const category = document.getElementById('modal-category').value;
   const starred = document.getElementById('modal-star').classList.contains('starred');
-  if (editTarget.type === 'todo') {
+  if (editTarget.type === TASK_TYPE.TODO) {
     todos[editTarget.index].text = val;
     todos[editTarget.index].category = category;
     todos[editTarget.index].starred = starred;
@@ -508,7 +521,7 @@ function downloadData() {
 }
 
 // ─── Migrate ──────────────────────────────────────────────────────────────
-const CATEGORY_MAP = { public: 'day', private: 'night' };
+const CATEGORY_MAP = { public: CATEGORY.DAY, private: CATEGORY.NIGHT };
 
 function migrate() {
   [['todos', 'todoboard_todos'], ['habits', 'todoboard_habits'], ['stepTasks', 'todoboard_stepTasks']].forEach(([oldKey, newKey]) => {
@@ -526,7 +539,7 @@ function migrate() {
   const todoChanged = todos.reduce((changed, t) => {
     let c = changed;
     if (CATEGORY_MAP[t.category]) { t.category = CATEGORY_MAP[t.category]; c = true; }
-    if (!t.category) { t.category = 'day'; c = true; }
+    if (!t.category) { t.category = CATEGORY.DAY; c = true; }
     if (!('starred' in t)) { t.starred = false; c = true; }
     if (!('completedOn' in t)) { t.completedOn = t.done ? todayStr() : null; c = true; }
     return c;
@@ -536,7 +549,7 @@ function migrate() {
   const habitChanged = habits.reduce((changed, h) => {
     let c = changed;
     if (CATEGORY_MAP[h.category]) { h.category = CATEGORY_MAP[h.category]; c = true; }
-    if (!h.category) { h.category = 'day'; c = true; }
+    if (!h.category) { h.category = CATEGORY.DAY; c = true; }
     if (!('starred' in h)) { h.starred = false; c = true; }
     return c;
   }, false);
@@ -545,9 +558,9 @@ function migrate() {
   const stepChanged = stepTasks.reduce((changed, task) => {
     let c = changed;
     task.steps = task.steps.map(s => {
-      if (typeof s === 'string') { c = true; return { text: s, starred: false, category: 'night' }; }
+      if (typeof s === 'string') { c = true; return { text: s, starred: false, category: CATEGORY.NIGHT }; }
       if (!('starred' in s))  { c = true; s = { ...s, starred: false }; }
-      if (!('category' in s)) { c = true; s = { ...s, category: 'night' }; }
+      if (!('category' in s)) { c = true; s = { ...s, category: CATEGORY.NIGHT }; }
       return s;
     });
     return c;
