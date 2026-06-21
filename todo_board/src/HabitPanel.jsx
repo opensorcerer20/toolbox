@@ -1,5 +1,18 @@
-import { useEffect, useState } from 'preact/hooks';
-import { CATEGORY, TASK_TYPE, todayStr, load, openEditModal, syncHabits, registerHabitsSetter } from './store';
+import {
+  useEffect,
+  useState,
+} from 'preact/hooks';
+
+import {
+  CATEGORY,
+  load,
+  openEditModal,
+  registerHabitsSetter,
+  syncHabits,
+  TASK_TYPE,
+  todayStr,
+  yesterdayStr,
+} from './store';
 
 const STORAGE_KEY = 'todoboard_habits';
 
@@ -7,6 +20,7 @@ export default function HabitPanel() {
   const [habits,      setHabits]   = useState(() => load(STORAGE_KEY, []));
   const [newName,     setNewName]  = useState('');
   const [newCategory, setNewCat]   = useState(CATEGORY.NIGHT);
+  const [newLogWhen,  setNewLogWhen] = useState('today');
 
   useEffect(() => {
     registerHabitsSetter(setHabits);
@@ -21,21 +35,22 @@ export default function HabitPanel() {
   function addHabit() {
     const name = newName.trim();
     if (!name) return;
-    persist([...habits, { id: Date.now(), name, logs: [], category: newCategory, starred: false }]);
+    persist([...habits, { id: Date.now(), name, logs: [], category: newCategory, logWhen: newLogWhen, starred: false }]);
     setNewName('');
   }
 
   function logHabit(i) {
-    const today = todayStr();
-    if (habits[i].logs.includes(today)) return;
-    persist(habits.map((h, idx) => idx === i ? { ...h, logs: [...h.logs, today] } : h));
+    const dateStr = habits[i].logWhen === 'yesterday' ? yesterdayStr() : todayStr();
+    if (habits[i].logs.includes(dateStr)) return;
+    persist(habits.map((h, idx) => idx === i ? { ...h, logs: [...h.logs, dateStr] } : h));
   }
 
   function deleteHabit(i) {
     persist(habits.filter((_, idx) => idx !== i));
   }
 
-  const today = todayStr();
+  const today     = todayStr();
+  const yesterday = yesterdayStr();
 
   return (
     <div class="panel">
@@ -57,22 +72,32 @@ export default function HabitPanel() {
           <option value={CATEGORY.NIGHT}>Night</option>
           <option value={CATEGORY.DAY}>Day</option>
         </select>
+        <select
+          id="habit-logwhen"
+          class="visibility-select"
+          value={newLogWhen}
+          onChange={e => setNewLogWhen(e.target.value)}>
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+        </select>
         <button class="btn-add" onClick={addHabit}>Add</button>
       </div>
       <ul id="habit-list">
         {habits.length === 0
           ? <li class="empty-msg">No habits yet.</li>
           : habits.map((h, i) => {
-              const loggedToday = h.logs.includes(today);
+              const isYesterday  = h.logWhen === 'yesterday';
+              const logDateStr   = isYesterday ? yesterday : today;
+              const logged       = h.logs.includes(logDateStr);
               return (
                 <li key={h.id} class={`cat-${h.category}`}>
                   <span class="habit-name">{h.name}</span>
                   <span class="habit-count">{h.logs.length}×</span>
                   <button
-                    class={`btn-habit-log${loggedToday ? ' done-today' : ''}`}
-                    disabled={loggedToday}
-                    onClick={loggedToday ? undefined : () => logHabit(i)}>
-                    {loggedToday ? '✓ Done' : 'Log'}
+                    class={`btn-habit-log${logged ? ' done-today' : ''}`}
+                    disabled={logged}
+                    onClick={logged ? undefined : () => logHabit(i)}>
+                    {isYesterday ? 'Y-Log' : 'Log'}
                   </button>
                   <button class="btn-edit" onClick={() => openEditModal(TASK_TYPE.HABIT, i)}>✎</button>
                   <button class="btn-del" onClick={() => deleteHabit(i)}>✕</button>

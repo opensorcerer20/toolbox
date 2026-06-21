@@ -4,6 +4,12 @@ export const todayStr = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
+export const yesterdayStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
 export function load(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
   catch { return fallback; }
@@ -68,6 +74,19 @@ export function makeCategorySelect(category, extraClass = '') {
     opt.value = val;
     opt.textContent = val.charAt(0).toUpperCase() + val.slice(1);
     if (val === category) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  return sel;
+}
+
+export function makeLogWhenSelect(logWhen = 'today', extraClass = '') {
+  const sel = document.createElement('select');
+  sel.className = ['visibility-select', extraClass].filter(Boolean).join(' ');
+  [['today', 'Today'], ['yesterday', 'Yesterday']].forEach(([val, label]) => {
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = label;
+    if (val === logWhen) opt.selected = true;
     sel.appendChild(opt);
   });
   return sel;
@@ -148,6 +167,14 @@ export function openEditModal(type, index) {
   catSel.id = 'modal-category';
   catSlot.appendChild(catSel);
 
+  const logWhenSlot = document.getElementById('modal-logwhen-slot');
+  logWhenSlot.innerHTML = '';
+  if (type === TASK_TYPE.HABIT) {
+    const lwSel = makeLogWhenSelect(item.logWhen || 'today');
+    lwSel.id = 'modal-logwhen';
+    logWhenSlot.appendChild(lwSel);
+  }
+
   const starSlot = document.getElementById('modal-star-slot');
   starSlot.innerHTML = '';
   const starBtn = makeStarBtn(!!item.starred);
@@ -178,8 +205,10 @@ export function saveEdit() {
     if (_setTodosState) _setTodosState([...todos]);
     renderTaskColumn();
   } else {
+    const logWhenEl = document.getElementById('modal-logwhen');
     habits[editTarget.index].name     = val;
     habits[editTarget.index].category = category;
+    habits[editTarget.index].logWhen  = logWhenEl ? logWhenEl.value : 'today';
     habits[editTarget.index].starred  = starred;
     saveHabits();
     if (_setHabitsState) _setHabitsState([...habits]);
@@ -234,6 +263,7 @@ export function migrate() {
     if (CATEGORY_MAP[h.category]) { h.category = CATEGORY_MAP[h.category]; c = true; }
     if (!h.category) { h.category = CATEGORY.DAY; c = true; }
     if (!('starred' in h)) { h.starred = false; c = true; }
+    if (!('logWhen' in h)) { h.logWhen = 'today'; c = true; }
     return c;
   }, false);
   if (habitChanged) saveHabits();
