@@ -47,10 +47,10 @@ npm run test:ui
 ```
 
 ## To Do
-- finish converting everything to preact
+- ~~finish converting everything to preact~~
 - "yesterlog"
 - rearrange multistep steps
-
+- separate day/night list for habits
 
 ## Problems and Solutions
 [x] With so many to-dos, can't easily tell which are more important

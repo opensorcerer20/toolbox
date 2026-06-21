@@ -313,36 +313,49 @@ button:hover { opacity: 0.85; }
 
 .btn-download:hover { background: #363c5a; opacity: 1; }
 
-/* --- Category overview panel --- */
-.category-panel {
-  flex: 1;
-  gap: 0;
-  padding: 0;
-  overflow: hidden;
+/* --- Day/Night tab layout --- */
+.daynight-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.cat-section {
-  flex: 1;
+.daynight-section {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  min-height: 0;
-  padding: 1.25rem;
-  overflow-y: auto;
 }
 
-.cat-section h2 {
+.daynight-heading {
   font-size: 1rem;
   font-weight: 600;
   color: var(--text-label);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  margin: 0;
 }
 
-.cat-divider {
-  height: 1px;
-  background: var(--border);
-  flex-shrink: 0;
+.daynight-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.daynight-row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.dn-subpanel {
+  gap: 0.5rem;
+}
+
+.dn-subpanel h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-label);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   margin: 0;
 }
 

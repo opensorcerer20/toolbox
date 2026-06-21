@@ -29,7 +29,7 @@ export function registerTodosSetter(fn) { _setTodosState = fn; }
 export function syncTodos(updated) {
   todos = updated;
   save('todoboard_todos', updated);
-  renderCategoryColumn();
+  renderTaskColumn();
 }
 
 // ─── HABIT TRACKER ────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ export function registerHabitsSetter(fn) { _setHabitsState = fn; }
 export function syncHabits(updated) {
   habits = updated;
   save('todoboard_habits', updated);
-  renderCategoryColumn();
+  renderHabitColumn();
 }
 
 // ─── MULTI-STEP TASKS ─────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ export function saveStepTasks() { save('todoboard_stepTasks', stepTasks); }
 export function syncStepTasks(tasks) {
   stepTasks = tasks;
   save('todoboard_stepTasks', tasks);
-  renderCategoryColumn();
+  renderTaskColumn();
 }
 
 // ─── Shared form element factories (used by todo/habit edit modal) ─────────
@@ -85,26 +85,15 @@ export function makeStarBtn(starred) {
   return btn;
 }
 
-// ─── Category overview column ─────────────────────────────────────────────
-export function renderCategoryColumn() {
-  const dayList   = document.getElementById('cat-day-list');
-  const nightList = document.getElementById('cat-night-list');
+// ─── Category overview columns ────────────────────────────────────────────
+function renderDayNightPair(items, dayId, nightId) {
+  const dayList   = document.getElementById(dayId);
+  const nightList = document.getElementById(nightId);
   if (!dayList || !nightList) return;
   dayList.innerHTML   = '';
   nightList.innerHTML = '';
 
-  const items = [
-    ...todos.filter(t => !t.done).map(t => ({ label: t.text, category: t.category || CATEGORY.DAY, starred: !!t.starred })),
-    ...habits.filter(h => !h.logs.includes(todayStr())).map(h => ({ label: h.name, category: h.category || CATEGORY.DAY, starred: !!h.starred })),
-    ...stepTasks.filter(t => t.current < t.steps.length).map(t => {
-      const s = t.steps[t.current];
-      return { label: `${t.name}: ${s.text}`, category: s.category || CATEGORY.NIGHT, starred: !!s.starred };
-    }),
-  ];
-
-  items.sort((a, b) => b.starred - a.starred);
-
-  items.forEach(({ label, category, starred }) => {
+  [...items].sort((a, b) => b.starred - a.starred).forEach(({ label, category, starred }) => {
     const li = document.createElement('li');
     li.className = `cat-${category}`;
     if (starred) {
@@ -119,6 +108,29 @@ export function renderCategoryColumn() {
 
   if (!dayList.children.length)   dayList.innerHTML   = '<li class="empty-msg">None.</li>';
   if (!nightList.children.length) nightList.innerHTML = '<li class="empty-msg">None.</li>';
+}
+
+export function renderTaskColumn() {
+  const items = [
+    ...todos.filter(t => !t.done).map(t => ({ label: t.text, category: t.category || CATEGORY.DAY, starred: !!t.starred })),
+    ...stepTasks.filter(t => t.current < t.steps.length).map(t => {
+      const s = t.steps[t.current];
+      return { label: `${t.name}: ${s.text}`, category: s.category || CATEGORY.NIGHT, starred: !!s.starred };
+    }),
+  ];
+  renderDayNightPair(items, 'day-task-list', 'night-task-list');
+}
+
+export function renderHabitColumn() {
+  const items = habits
+    .filter(h => !h.logs.includes(todayStr()))
+    .map(h => ({ label: h.name, category: h.category || CATEGORY.DAY, starred: !!h.starred }));
+  renderDayNightPair(items, 'day-habit-list', 'night-habit-list');
+}
+
+export function renderCategoryColumn() {
+  renderTaskColumn();
+  renderHabitColumn();
 }
 
 // ─── Edit modal (todos & habits) ──────────────────────────────────────────
@@ -164,14 +176,14 @@ export function saveEdit() {
     todos[editTarget.index].starred  = starred;
     saveTodos();
     if (_setTodosState) _setTodosState([...todos]);
-    renderCategoryColumn();
+    renderTaskColumn();
   } else {
     habits[editTarget.index].name     = val;
     habits[editTarget.index].category = category;
     habits[editTarget.index].starred  = starred;
     saveHabits();
     if (_setHabitsState) _setHabitsState([...habits]);
-    renderCategoryColumn();
+    renderHabitColumn();
   }
   closeEditModal();
 }

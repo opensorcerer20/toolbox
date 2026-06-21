@@ -1,13 +1,18 @@
-import { useEffect, useState } from 'preact/hooks';
-import TabNav from './TabNav';
+import {
+  useEffect,
+  useState,
+} from 'preact/hooks';
+
 import CategoryPanel from './CategoryPanel';
-import TodoPanel from './TodoPanel';
 import HabitPanel from './HabitPanel';
 import StepPanel from './StepPanel';
 import {
-  saveEdit, closeEditModal,
+  closeEditModal,
+  saveEdit,
   scheduleReloadAtMidnight,
 } from './store';
+import TabNav from './TabNav';
+import TodoPanel from './TodoPanel';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(
@@ -33,6 +38,7 @@ export default function App() {
       <h1>To Do Board</h1>
       <button class="btn-download" onClick={() => window.downloadData()}>Download JSON</button>
       <p class="tagline">"Take one small step forward today, that's it"</p>
+      <p class="tagline">"Hurry up and post it"</p>
       <TabNav activeTab={activeTab} onSwitch={switchTab} />
       <div class={`tab-panel${activeTab === 'daynight' ? ' active' : ''}`}>
         <CategoryPanel />

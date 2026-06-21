@@ -367,7 +367,7 @@ test('adding a day todo shows it in the day list', async ({ page }) => {
   await page.selectOption('#todo-category', 'day');
   await page.fill('#todo-input', 'Day task');
   await page.click('.btn-add');
-  await expect(page.locator('#cat-day-list')).toContainText('Day task');
+  await expect(page.locator('#day-task-list')).toContainText('Day task');
 });
 
 test('adding a night todo shows it in the night list', async ({ page }) => {
@@ -376,25 +376,25 @@ test('adding a night todo shows it in the night list', async ({ page }) => {
   await page.selectOption('#todo-category', 'night');
   await page.fill('#todo-input', 'Night task');
   await page.click('.btn-add');
-  await expect(page.locator('#cat-night-list')).toContainText('Night task');
+  await expect(page.locator('#night-task-list')).toContainText('Night task');
 });
 
-test('adding a day habit shows it in the day list', async ({ page }) => {
+test('adding a day habit shows it in the habit day list', async ({ page }) => {
   await freshPage(page, 'habits');
   await page.goto('/');
   await page.selectOption('#habit-category', 'day');
   await page.fill('#habit-input', 'Morning stretch');
   await page.click('.btn-add >> nth=1');
-  await expect(page.locator('#cat-day-list')).toContainText('Morning stretch');
+  await expect(page.locator('#day-habit-list')).toContainText('Morning stretch');
 });
 
-test('adding a night habit shows it in the night list', async ({ page }) => {
+test('adding a night habit shows it in the habit night list', async ({ page }) => {
   await freshPage(page, 'habits');
   await page.goto('/');
   await page.selectOption('#habit-category', 'night');
   await page.fill('#habit-input', 'Evening journal');
   await page.click('.btn-add >> nth=1');
-  await expect(page.locator('#cat-night-list')).toContainText('Evening journal');
+  await expect(page.locator('#night-habit-list')).toContainText('Evening journal');
 });
 
 test('adding a step task shows first step in the day/night list', async ({ page }) => {
@@ -406,7 +406,7 @@ test('adding a step task shows first step in the day/night list', async ({ page 
   await page.click('.btn-add-step-field');
   await page.locator('#step-fields input >> nth=1').fill('Deploy');
   await page.click('.btn-confirm-task');
-  await expect(page.locator('#cat-day-list')).toContainText('Build app: Write tests');
+  await expect(page.locator('#day-task-list')).toContainText('Build app: Write tests');
 });
 
 test('completing first step of multistep task shows second step in day/night list', async ({ page }) => {
@@ -419,10 +419,10 @@ test('completing first step of multistep task shows second step in day/night lis
   await page.locator('#step-fields input >> nth=1').fill('Press launch');
   await page.locator('#step-fields .visibility-select >> nth=1').selectOption('night');
   await page.click('.btn-confirm-task');
-  await expect(page.locator('#cat-day-list')).toContainText('Launch rocket: Fuel up');
+  await expect(page.locator('#day-task-list')).toContainText('Launch rocket: Fuel up');
   await page.locator('#step-list input[type="checkbox"]').click();
-  await expect(page.locator('#cat-day-list')).not.toContainText('Launch rocket: Fuel up');
-  await expect(page.locator('#cat-night-list')).toContainText('Launch rocket: Press launch');
+  await expect(page.locator('#day-task-list')).not.toContainText('Launch rocket: Fuel up');
+  await expect(page.locator('#night-task-list')).toContainText('Launch rocket: Press launch');
 });
 
 // ─── Day/Night column removal ─────────────────────────────────────────────────
@@ -433,9 +433,9 @@ test('completing a day todo removes it from the day list', async ({ page }) => {
   await page.selectOption('#todo-category', 'day');
   await page.fill('#todo-input', 'Day errand');
   await page.click('.btn-add');
-  await expect(page.locator('#cat-day-list')).toContainText('Day errand');
+  await expect(page.locator('#day-task-list')).toContainText('Day errand');
   await page.locator('#todo-list li input[type="checkbox"]').click();
-  await expect(page.locator('#cat-day-list')).not.toContainText('Day errand');
+  await expect(page.locator('#day-task-list')).not.toContainText('Day errand');
 });
 
 test('completing a night todo removes it from the night list', async ({ page }) => {
@@ -444,31 +444,31 @@ test('completing a night todo removes it from the night list', async ({ page }) 
   await page.selectOption('#todo-category', 'night');
   await page.fill('#todo-input', 'Night task');
   await page.click('.btn-add');
-  await expect(page.locator('#cat-night-list')).toContainText('Night task');
+  await expect(page.locator('#night-task-list')).toContainText('Night task');
   await page.locator('#todo-list li input[type="checkbox"]').click();
-  await expect(page.locator('#cat-night-list')).not.toContainText('Night task');
+  await expect(page.locator('#night-task-list')).not.toContainText('Night task');
 });
 
-test('logging a day habit removes it from the day list', async ({ page }) => {
+test('logging a day habit removes it from the habit day list', async ({ page }) => {
   await freshPage(page, 'habits');
   await page.goto('/');
   await page.selectOption('#habit-category', 'day');
   await page.fill('#habit-input', 'Morning run');
   await page.click('.btn-add >> nth=1');
-  await expect(page.locator('#cat-day-list')).toContainText('Morning run');
+  await expect(page.locator('#day-habit-list')).toContainText('Morning run');
   await page.locator('#habit-list .btn-habit-log').click();
-  await expect(page.locator('#cat-day-list')).not.toContainText('Morning run');
+  await expect(page.locator('#day-habit-list')).not.toContainText('Morning run');
 });
 
-test('logging a night habit removes it from the night list', async ({ page }) => {
+test('logging a night habit removes it from the habit night list', async ({ page }) => {
   await freshPage(page, 'habits');
   await page.goto('/');
   await page.selectOption('#habit-category', 'night');
   await page.fill('#habit-input', 'Evening read');
   await page.click('.btn-add >> nth=1');
-  await expect(page.locator('#cat-night-list')).toContainText('Evening read');
+  await expect(page.locator('#night-habit-list')).toContainText('Evening read');
   await page.locator('#habit-list .btn-habit-log').click();
-  await expect(page.locator('#cat-night-list')).not.toContainText('Evening read');
+  await expect(page.locator('#night-habit-list')).not.toContainText('Evening read');
 });
 
 test('unchecking a todo restores it to the day/night list', async ({ page }) => {
@@ -478,9 +478,9 @@ test('unchecking a todo restores it to the day/night list', async ({ page }) => 
   await page.fill('#todo-input', 'Restore me');
   await page.click('.btn-add');
   await page.locator('#todo-list li input[type="checkbox"]').click();
-  await expect(page.locator('#cat-day-list')).not.toContainText('Restore me');
+  await expect(page.locator('#day-task-list')).not.toContainText('Restore me');
   await page.locator('#todo-list li input[type="checkbox"]').click();
-  await expect(page.locator('#cat-day-list')).toContainText('Restore me');
+  await expect(page.locator('#day-task-list')).toContainText('Restore me');
 });
 
 // ─── Stars ────────────────────────────────────────────────────────────────────
@@ -511,12 +511,12 @@ test('starred todo appears first in day column and shows star icon', async ({ pa
   await page.locator('#todo-list .btn-edit').nth(1).click();
   await page.click('#modal-star');
   await page.click('.modal-actions .btn-add');
-  await expect(page.locator('#cat-day-list li').nth(0)).toContainText('Star this one');
-  await expect(page.locator('#cat-day-list li').nth(1)).toContainText('First added');
-  await expect(page.locator('#cat-day-list li .cat-star')).toHaveText('★');
+  await expect(page.locator('#day-task-list li').nth(0)).toContainText('Star this one');
+  await expect(page.locator('#day-task-list li').nth(1)).toContainText('First added');
+  await expect(page.locator('#day-task-list li .cat-star')).toHaveText('★');
 });
 
-test('starred habit appears first in night column and shows star icon', async ({ page }) => {
+test('starred habit appears first in habit night list and shows star icon', async ({ page }) => {
   await freshPage(page, 'habits');
   await page.goto('/');
   await page.selectOption('#habit-category', 'night');
@@ -527,7 +527,7 @@ test('starred habit appears first in night column and shows star icon', async ({
   await page.locator('#habit-list .btn-edit').nth(1).click();
   await page.click('#modal-star');
   await page.click('.modal-actions .btn-add');
-  await expect(page.locator('#cat-night-list li').nth(0)).toContainText('Star this habit');
-  await expect(page.locator('#cat-night-list li').nth(1)).toContainText('First habit');
-  await expect(page.locator('#cat-night-list li .cat-star')).toHaveText('★');
+  await expect(page.locator('#night-habit-list li').nth(0)).toContainText('Star this habit');
+  await expect(page.locator('#night-habit-list li').nth(1)).toContainText('First habit');
+  await expect(page.locator('#night-habit-list li .cat-star')).toHaveText('★');
 });
