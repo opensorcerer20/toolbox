@@ -7,9 +7,9 @@ function getTaskItems(period) {
       .filter(t => !t.done)
       .map(t => ({ label: t.text, category: t.category || CATEGORY.DAY, starred: !!t.starred })),
     ...stepTasks
-      .filter(t => t.current < t.steps.length)
+      .filter(t => t.steps.some(s => !s.done))
       .map(t => {
-        const s = t.steps[t.current];
+        const s = t.steps.find(s => !s.done);
         return { label: `${t.name}: ${s.text}`, category: s.category || CATEGORY.NIGHT, starred: !!s.starred };
       }),
   ];

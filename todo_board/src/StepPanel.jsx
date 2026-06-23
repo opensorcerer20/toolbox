@@ -1,14 +1,41 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
-import { CATEGORY, load, save, syncStepTasks } from './store';
+import {
+  useEffect,
+  useRef,
+  useState,
+} from 'preact/hooks';
+
+import {
+  CATEGORY,
+  load,
+  syncStepTasks,
+} from './store';
 
 const STORAGE_KEY = 'todoboard_stepTasks';
-const emptyStep   = () => ({ text: '', category: CATEGORY.NIGHT, starred: false });
+const emptyStep   = () => ({ text: '', category: CATEGORY.NIGHT, starred: false, done: false });
 
-function StepFields({ idPrefix, steps, onChange, onRemove }) {
+// Migrate old tasks that used a `current` index instead of per-step `done` flags
+function migrateTask(t) {
+  if (t.steps.length === 0 || 'done' in t.steps[0]) return t;
+  const current = t.current ?? 0;
+  return { ...t, steps: t.steps.map((s, i) => ({ ...s, done: i < current })) };
+}
+
+function StepFields({ idPrefix, steps, onChange, onRemove, showDone = false }) {
   return (
     <div class="step-add-steps" id={idPrefix}>
       {steps.map((s, i) => (
         <div class="step-input-row" key={i}>
+          {showDone && (
+            <div style={{width: 30}}>
+            <input
+              type="checkbox"
+              class="step-done-check"
+              checked={!!s.done}
+              onChange={() => onChange(i, 'done', !s.done)}
+              title="Mark step complete"
+            />
+            </div>
+          )}
           <input
             type="text"
             placeholder={`Step ${i + 1}…`}
@@ -41,7 +68,7 @@ function StepFields({ idPrefix, steps, onChange, onRemove }) {
 }
 
 export default function StepPanel() {
-  const [tasks,     setTasks]     = useState(() => load(STORAGE_KEY, []));
+  const [tasks,     setTasks]     = useState(() => load(STORAGE_KEY, []).map(migrateTask));
   const [expanded,  setExpanded]  = useState(() => new Set());
   const [newName,   setNewName]   = useState('');
   const [newSteps,  setNewSteps]  = useState([emptyStep()]);
@@ -72,16 +99,21 @@ export default function StepPanel() {
   }
   function addTask() {
     const name  = newName.trim();
-    const steps = newSteps.filter(s => s.text.trim());
+    const steps = newSteps.filter(s => s.text.trim()).map(s => ({ ...s, done: false }));
     if (!name || !steps.length) return;
-    persist([...tasks, { id: Date.now(), name, steps, current: 0 }]);
+    persist([...tasks, { id: Date.now(), name, steps }]);
     setNewName('');
     setNewSteps([emptyStep()]);
   }
 
   // ─── List actions ─────────────────────────────────────────────────────────
   function advanceStep(ti) {
-    persist(tasks.map((t, i) => i === ti ? { ...t, current: t.current + 1 } : t));
+    persist(tasks.map((t, i) => {
+      if (i !== ti) return t;
+      const idx = t.steps.findIndex(s => !s.done);
+      if (idx === -1) return t;
+      return { ...t, steps: t.steps.map((s, si) => si === idx ? { ...s, done: true } : s) };
+    }));
   }
   function deleteTask(ti) {
     const id = tasks[ti].id;
@@ -115,16 +147,14 @@ export default function StepPanel() {
     const name  = editName.trim();
     const steps = editSteps.filter(s => s.text.trim());
     if (!name || !steps.length) return;
-    persist(tasks.map((t, i) => i !== editIdx ? t : {
-      ...t, name, steps, current: Math.min(t.current, steps.length),
-    }));
+    persist(tasks.map((t, i) => i !== editIdx ? t : { ...t, name, steps }));
     closeEdit();
   }
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div class="panel">
-      <h2>Step-by-Step</h2>
+      <h2>Step-by-Step2</h2>
 
       {/* Add form */}
       <div class="add-row">
@@ -152,9 +182,10 @@ export default function StepPanel() {
         {tasks.length === 0
           ? <li class="empty-msg">No step tasks yet.</li>
           : tasks.map((task, ti) => {
-              const done       = task.current >= task.steps.length;
+              const currentIdx = task.steps.findIndex(s => !s.done);
+              const done       = currentIdx === -1;
               const isExpanded = expanded.has(task.id);
-              const progress   = `${Math.min(task.current, task.steps.length)}/${task.steps.length}`;
+              const progress   = `${task.steps.filter(s => s.done).length}/${task.steps.length}`;
 
               let stepsContent;
               if (isExpanded) {
@@ -163,9 +194,9 @@ export default function StepPanel() {
                     {task.steps.map((s, si) => {
                       const cat  = s.category || CATEGORY.NIGHT;
                       const star = s.starred ? <span class="cat-star step-cat-star">★</span> : null;
-                      if (si < task.current) {
+                      if (s.done) {
                         return <div class={`step-row past-step cat-${cat}`}>{star}{s.text}</div>;
-                      } else if (si === task.current && !done) {
+                      } else if (si === currentIdx) {
                         return (
                           <div class={`step-row current-step cat-${cat}`}>
                             <input type="checkbox" onChange={() => advanceStep(ti)} />
@@ -180,7 +211,7 @@ export default function StepPanel() {
                   </div>
                 );
               } else {
-                const s   = task.steps[task.current];
+                const s   = done ? null : task.steps[currentIdx];
                 const cat = done ? '' : (s.category || CATEGORY.NIGHT);
                 const star = (!done && s.starred) ? <span class="cat-star step-cat-star">★</span> : null;
                 stepsContent = (
@@ -235,7 +266,7 @@ export default function StepPanel() {
               onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') closeEdit(); }}
             />
           </div>
-          <StepFields idPrefix="step-edit-fields" steps={editSteps} onChange={changeEdit} onRemove={removeEdit} />
+          <StepFields idPrefix="step-edit-fields" steps={editSteps} onChange={changeEdit} onRemove={removeEdit} showDone={true} />
           <div class="step-add-steps step-add-actions">
             <button
               type="button"
