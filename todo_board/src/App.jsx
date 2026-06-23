@@ -1,14 +1,12 @@
-import {
-  useEffect,
-  useState,
-} from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 
 import CategoryPanel from './CategoryPanel';
+import EditModal from './EditModal';
 import HabitPanel from './HabitPanel';
 import StepPanel from './StepPanel';
 import {
-  closeEditModal,
-  saveEdit,
+  downloadData,
+  registerOpenEditModal,
   scheduleReloadAtMidnight,
 } from './store';
 import TabNav from './TabNav';
@@ -18,6 +16,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(
     () => localStorage.getItem('todoboard_activeTab') || 'daynight'
   );
+  const [editState, setEditState] = useState(null);
 
   const switchTab = (tab) => {
     setActiveTab(tab);
@@ -25,18 +24,14 @@ export default function App() {
   };
 
   useEffect(() => {
-    document.getElementById('modal-input').addEventListener('keydown', e => {
-      if (e.key === 'Enter') saveEdit();
-      if (e.key === 'Escape') closeEditModal();
-    });
-
+    registerOpenEditModal((type, index) => setEditState({ type, index }));
     scheduleReloadAtMidnight();
   }, []);
 
   return (
     <>
       <h1>To Do Board</h1>
-      <button class="btn-download" onClick={() => window.downloadData()}>Download JSON</button>
+      <button class="btn-download" onClick={downloadData}>Download JSON</button>
       <p class="tagline">"Take one small step forward today, that's it"</p>
       <p class="tagline">"Hurry up and post it"</p>
       <TabNav activeTab={activeTab} onSwitch={switchTab} />
@@ -52,6 +47,7 @@ export default function App() {
       <div class={`tab-panel${activeTab === 'steps' ? ' active' : ''}`}>
         <StepPanel />
       </div>
+      <EditModal editState={editState} onClose={() => setEditState(null)} />
     </>
   );
 }

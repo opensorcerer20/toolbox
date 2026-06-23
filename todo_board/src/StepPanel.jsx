@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { CATEGORY, load, save, renderCategoryColumn, syncStepTasks } from './store';
+import { CATEGORY, load, save, syncStepTasks } from './store';
 
 const STORAGE_KEY = 'todoboard_stepTasks';
 const emptyStep   = () => ({ text: '', category: CATEGORY.NIGHT, starred: false });

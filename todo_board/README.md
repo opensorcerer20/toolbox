@@ -4,11 +4,18 @@
 
 Built for people who struggle to break tasks down into smaller pieces and actually act on them. The board keeps everything visible at a glance — what needs to happen today, what's a daily commitment, and what the very next step is on a bigger project. Tasks are split into Day and Night so time-sensitive errands that can only be done during business hours are separated from personal or leisure items best saved for the evening. The only real discipline required is making sure larger tasks are broken down appropriately before they go on the board.
 
-A single-file productivity board with three sections: a to-do list, a daily habit tracker, and a step-by-step task list. All data is stored in `localStorage` — no server or build step required.
+A productivity board with three sections: a to-do list, a daily habit tracker, and a step-by-step task list. All data is stored in `localStorage`. Built with Preact and Vite.
 
 ## Usage
 
-Open `index.html` directly in a browser. No dependencies needed.
+Install dependencies, then start the dev server:
+
+```bash
+npm install
+npm run dev
+```
+
+To expose on the local network: `npm run dev -- --host 0.0.0.0`
 
 ## Sections
 
@@ -48,9 +55,9 @@ npm run test:ui
 
 ## To Do
 - ~~finish converting everything to preact~~
-- "yesterlog"
+- ~~"yesterlog"~~
 - rearrange multistep steps
-- separate day/night list for habits
+- ~~separate day/night list for habits~~
 
 ## Problems and Solutions
 [x] With so many to-dos, can't easily tell which are more important
