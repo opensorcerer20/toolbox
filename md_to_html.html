@@ -107,6 +107,10 @@
 
 		<section>
 			<label for="htmlPreview">HTML preview</label>
+			<label style="font-weight: 400; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+				<input type="checkbox" id="paragraphModeCheckbox" style="margin: 0;" />
+				Treat new lines as paragraphs
+			</label>
 			<div id="htmlPreview" class="preview-box" aria-live="polite"></div>
 		</section>
 
@@ -122,18 +126,88 @@
 		const clearButton = document.getElementById('clearButton');
 		const htmlPreview = document.getElementById('htmlPreview');
 		const htmlOutput = document.getElementById('htmlOutput');
+		const paragraphModeCheckbox = document.getElementById('paragraphModeCheckbox');
+		function escapeHtml(str) {
+			return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		}
+
+		const LIST_LINE_RE = /^\s*[-*+]\s+/;
+		const TABLE_LINE_RE = /^\s*\|/;
+
+		// Single source of truth for the styling applied to rendered markdown,
+		// shared between the standalone HTML output document and the live preview.
+		const OUTPUT_CSS_RULES = [
+			{ selector: 'body', body: 'font-family:"Arial";' },
+			{ selector: 'th, td', body: 'padding: 5px; vertical-align: top;' }
+		];
+
+		function buildOutputStyle() {
+			return OUTPUT_CSS_RULES.map(r => `${r.selector}{${r.body}}`).join('');
+		}
+
+		function buildPreviewStyle() {
+			return OUTPUT_CSS_RULES.map(r => {
+				const scopedSelectors = r.selector.split(',')
+					.map(s => s.trim())
+					.map(s => s === 'body' ? '#htmlPreview' : `#htmlPreview ${s}`)
+					.join(', ');
+				return `${scopedSelectors}{${r.body}}`;
+			}).join('\n');
+		}
+
+		document.head.insertAdjacentHTML('beforeend', `<style>${buildPreviewStyle()}</style>`);
+
+		// Force a line break (or paragraph break, if useParagraphs) at every single line feed,
+		// except within unordered list items and table rows, which rely on single line feeds
+		// to stay part of the same list/table. That exception is itself skipped while inside
+		// a raw HTML <td> tag, where line feeds should still be treated normally.
+		function applyLineBreakRules(source, useParagraphs) {
+			const lines = source.split('\n');
+			let tdDepth = 0;
+			let out = '';
+			for (let i = 0; i < lines.length; i++) {
+				const line = lines[i];
+				out += line;
+
+				const opens = (line.match(/<td\b[^>]*>/gi) || []).length;
+				const closes = (line.match(/<\/td>/gi) || []).length;
+				tdDepth = Math.max(0, tdDepth + opens - closes);
+
+				if (i === lines.length - 1) break;
+
+				const nextLine = lines[i + 1];
+				if (line.trim() === '' || nextLine.trim() === '') {
+					// Already a paragraph break; leave as-is.
+					out += '\n';
+					continue;
+				}
+
+				const isListContext = LIST_LINE_RE.test(line) || LIST_LINE_RE.test(nextLine);
+				const isTableContext = TABLE_LINE_RE.test(line) || TABLE_LINE_RE.test(nextLine);
+				const skip = (isListContext || isTableContext) && tdDepth === 0;
+
+				if (skip) {
+					out += '\n';
+				} else if (useParagraphs) {
+					out += '\n\n';
+				} else {
+					out += '  \n';
+				}
+			}
+			return out;
+		}
 
 		function convertMarkdown() {
-			// Replace every single line feed with '  \n' to force <br> on every line
 			let source = markdownInput.value;
-			// Only replace single line feeds, not double (paragraphs)
-			source = source.replace(/([^\n])\n(?!\n)/g, '$1  \n');
+			source = applyLineBreakRules(source, paragraphModeCheckbox.checked);
+
+			const title = escapeHtml(source.trim().slice(0, 50));
 
 			if (window.marked && typeof window.marked.parse === 'function') {
 				let renderedHtml = window.marked.parse(source);
 				// Remove disabled="" attribute from checkboxes to make them interactive
 				renderedHtml = renderedHtml.replace(/\s+disabled=""/g, '');
-				htmlOutput.value = renderedHtml;
+				htmlOutput.value = `<html><head><title>${title}</title><style>${buildOutputStyle()}</style></head>\n<body>\n${renderedHtml}\n</body></html>`;
 				htmlPreview.innerHTML = renderedHtml;
 			} else {
 				htmlOutput.value = source;
@@ -142,6 +216,7 @@
 		}
 
 		markdownInput.addEventListener('input', convertMarkdown);
+		paragraphModeCheckbox.addEventListener('change', convertMarkdown);
 
 		// Handle markdown file upload
 		markdownFile.addEventListener('change', function(event) {
