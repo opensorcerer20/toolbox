@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Photo Viewer</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #111;
+    color: #eee;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow: hidden;
+  }
+
+  #intro {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  #chooseBtn {
+    font-size: 16px;
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    background: #3a7bfd;
+    color: white;
+    cursor: pointer;
+  }
+
+  #chooseBtn:hover {
+    background: #588bfd;
+  }
+
+  #status {
+    color: #999;
+    font-size: 14px;
+    max-width: 480px;
+    text-align: center;
+  }
+
+  #viewer {
+    display: none;
+    height: 100%;
+    width: 100%;
+    flex-direction: row;
+  }
+
+  #sidebar {
+    width: 200px;
+    flex-shrink: 0;
+    height: 100%;
+    background: #262626;
+    box-sizing: border-box;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  #backBtn {
+    font-size: 14px;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    background: #3a7bfd;
+    color: white;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+
+  #backBtn:hover {
+    background: #588bfd;
+  }
+
+  #filename {
+    font-size: 13px;
+    color: #eee;
+    word-break: break-word;
+  }
+
+  #position {
+    font-size: 13px;
+    color: #999;
+  }
+
+  #imageArea {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+</style>
+</head>
+<body>
+
+<div id="intro">
+  <button id="chooseBtn">Choose Folder</button>
+  <div id="status">No folder selected.</div>
+</div>
+
+<div id="viewer">
+  <div id="sidebar">
+    <button id="backBtn">Back</button>
+    <div id="filename"></div>
+    <div id="position"></div>
+  </div>
+  <div id="imageArea">
+    <img id="image" alt="">
+  </div>
+</div>
+
+<script>
+  const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'avif', 'svg'];
+
+  const introEl = document.getElementById('intro');
+  const statusEl = document.getElementById('status');
+  const chooseBtn = document.getElementById('chooseBtn');
+  const viewerEl = document.getElementById('viewer');
+  const imageEl = document.getElementById('image');
+  const filenameEl = document.getElementById('filename');
+  const positionEl = document.getElementById('position');
+  const backBtn = document.getElementById('backBtn');
+
+  let fileHandles = [];
+  let currentIndex = 0;
+  let currentObjectUrl = null;
+
+  function isImageFile(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    return IMAGE_EXTENSIONS.includes(ext);
+  }
+
+  function naturalCompare(a, b) {
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+  }
+
+  async function loadFolder() {
+    if (!window.showDirectoryPicker) {
+      statusEl.textContent = 'Your browser doesn\'t support the File System Access API. Please use Chrome or Edge.';
+      return;
+    }
+
+    let dirHandle;
+    try {
+      dirHandle = await window.showDirectoryPicker();
+    } catch (err) {
+      // User cancelled the picker.
+      return;
+    }
+
+    const entries = [];
+    for await (const [name, handle] of dirHandle.entries()) {
+      if (handle.kind === 'file' && isImageFile(name)) {
+        entries.push({ name, handle });
+      }
+    }
+
+    if (entries.length === 0) {
+      statusEl.textContent = 'No images found in that folder.';
+      return;
+    }
+
+    entries.sort((a, b) => naturalCompare(a.name, b.name));
+    fileHandles = entries;
+    currentIndex = 0;
+
+    introEl.classList.add('hidden');
+    viewerEl.style.display = 'flex';
+    await showImage(currentIndex);
+  }
+
+  function goBack() {
+    if (currentObjectUrl) {
+      URL.revokeObjectURL(currentObjectUrl);
+      currentObjectUrl = null;
+    }
+    fileHandles = [];
+    currentIndex = 0;
+    imageEl.src = '';
+
+    viewerEl.style.display = 'none';
+    introEl.classList.remove('hidden');
+    statusEl.textContent = 'No folder selected.';
+  }
+
+  async function showImage(index) {
+    const entry = fileHandles[index];
+    const file = await entry.handle.getFile();
+
+    if (currentObjectUrl) {
+      URL.revokeObjectURL(currentObjectUrl);
+    }
+    currentObjectUrl = URL.createObjectURL(file);
+
+    imageEl.src = currentObjectUrl;
+    filenameEl.textContent = entry.name;
+    positionEl.textContent = `${index + 1} / ${fileHandles.length}`;
+  }
+
+  function navigate(delta) {
+    if (fileHandles.length === 0) return;
+    currentIndex = (currentIndex + delta + fileHandles.length) % fileHandles.length;
+    showImage(currentIndex);
+  }
+
+  chooseBtn.addEventListener('click', loadFolder);
+  backBtn.addEventListener('click', goBack);
+
+  document.addEventListener('keydown', (e) => {
+    if (fileHandles.length === 0) return;
+    if (e.key === 'ArrowRight') {
+      navigate(1);
+    } else if (e.key === 'ArrowLeft') {
+      navigate(-1);
+    }
+  });
+</script>
+
+</body>
+</html>
