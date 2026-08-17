@@ -200,7 +200,7 @@
             <h1>Timed Messages Display</h1>
             <p>Used for syncing with audio playback to verify animation event timestamps. Optional images will appear above each message when specified.</p>
         </div>
-        <div id="timerDisplay" class="timer-display">-0:05</div>
+        <div id="timerDisplay" class="timer-display">-0:05.0</div>
         <div id="messageDisplay" class="message">
             <div id="imageSlot" class="image-slot">
                 <span class="placeholder-label">400×300</span>
@@ -210,8 +210,8 @@
             <span class="message-text">&nbsp;</span>
         </div>
         <div class="csv-input-container">
-            <label for="csvInput" class="csv-input-label">Messages (CSV format: timestamp,message[,image])</label>
-            <textarea id="csvInput" class="csv-input" placeholder="0:00,First message appears immediately,first.png&#10;0:05,Second message at 5 seconds&#10;1:00,Third message at 1 minute,third.jpg&#10;1:30,Fourth message at 1 minute 30 seconds&#10;&#10;Format: timestamp in M:SS or MM:SS, then comma, then message text; optional third value is an image filename from the images/ folder. If an image is provided, the first comma separates the timestamp and the last comma separates the image; commas in message text are supported."></textarea>
+            <label for="csvInput" class="csv-input-label">Messages (CSV format: timestamp,message[,image] — timestamps accept tenths, e.g. 0:05.5)</label>
+            <textarea id="csvInput" class="csv-input" placeholder="0:00,First message appears immediately,first.png&#10;0:05.5,Second message at 5.5 seconds&#10;1:00,Third message at 1 minute,third.jpg&#10;1:30,Fourth message at 1 minute 30 seconds&#10;&#10;Format: timestamp in M:SS, MM:SS, or M:SS.T for tenths of a second, then comma, then message text; optional third value is an image filename from the images/ folder. If an image is provided, the first comma separates the timestamp and the last comma separates the image; commas in message text are supported."></textarea>
         </div>
         <div class="button-group">
             <button id="startButton" class="start-button">Start</button>
@@ -226,14 +226,14 @@
          * 
          * This script displays messages at specified timestamps, synchronized with audio playback.
          * Features:
-         * - CSV input for custom messages and timestamps
-         * - Timer starts at -5 seconds (countdown effect)
+         * - CSV input for custom messages and timestamps, precise to tenths of a second
+         * - Timer starts at -5 seconds (countdown effect) and displays tenths (M:SS.T)
          * - Messages fade in 0.2 seconds before their timestamp
          * - Pause/Resume functionality
          * - Fixed 800px container with visible borders
-         * 
+         *
          * Usage:
-         * 1. Enter messages in CSV format: timestamp,message
+         * 1. Enter messages in CSV format: timestamp,message (timestamp may include tenths, e.g. 0:05.5)
          * 2. Click Start to begin timer
          * 3. Messages appear at their specified timestamps
          * 4. Use Pause/Resume to control playback
@@ -243,7 +243,7 @@
         // Default messages (used as fallback if CSV is empty)
         const defaultMessages = [
         {timestamp: "0:00", message: "First message appears immediately", image: "resize-image1.png"},
-        {timestamp: "0:05", message: "Second message at 5 seconds and has a lot more words than you would expect or even believe", image: "resize-image2.png"},
+        {timestamp: "0:05.5", message: "Second message at 5.5 seconds and has a lot more words than you would expect or even believe", image: "resize-image2.png"},
         {timestamp: "1:00", message: "Third message at 1 minute"},
         {timestamp: "1:30", message: "Fourth message at 1 minute 30 seconds"},
 
@@ -286,17 +286,18 @@
         setTextareaDefaultFromDefaults();
 
         function parseTimestamp(timestamp) {
-            // Parse timestamp in format "M:SS" or "MM:SS" (e.g., "0:05" = 5 seconds)
+            // Parse timestamp in format "M:SS", "MM:SS", or with tenths "M:SS.T"
+            // (e.g., "0:05" = 5 seconds, "0:05.5" = 5.5 seconds)
             const parts = timestamp.split(':');
-            const minutes = parseInt(parts[0], 10);
-            const seconds = parseInt(parts[1], 10);
-            return (minutes * 60 + seconds) * 1000; // Convert to milliseconds
+            const minutes = parseInt(parts[0], 10) || 0;
+            const seconds = parseFloat(parts[1]) || 0; // parseFloat keeps the fractional part
+            return Math.round((minutes * 60 + seconds) * 1000); // Convert to milliseconds
         }
 
         /**
          * Parse CSV data from textarea
          * Format: timestamp,message (one per line)
-         * Example: "0:05,Hello world" or "1:30,This is a message"
+         * Example: "0:05,Hello world", "0:05.5,Half a second later" or "1:30,This is a message"
          * @param {string} csvText - CSV text from textarea
          * @returns {Array} Array of {timestamp, message} objects
          */
@@ -339,18 +340,18 @@
         }
 
         function formatTime(milliseconds) {
-            // Format milliseconds as M:SS or MM:SS, handling negative values
-            const totalSeconds = Math.floor(milliseconds / 1000);
-            const absTotalSeconds = Math.abs(totalSeconds);
-            const minutes = Math.floor(absTotalSeconds / 60);
-            const seconds = absTotalSeconds % 60;
-            const sign = totalSeconds < 0 ? '-' : '';
-            return `${sign}${minutes}:${seconds.toString().padStart(2, '0')}`;
+            // Format milliseconds as M:SS.T or MM:SS.T, handling negative values
+            const sign = milliseconds < 0 ? '-' : '';
+            const totalTenths = Math.floor(Math.abs(milliseconds) / 100);
+            const minutes = Math.floor(totalTenths / 600);
+            const seconds = Math.floor(totalTenths / 10) % 60;
+            const tenths = totalTenths % 10;
+            return `${sign}${minutes}:${seconds.toString().padStart(2, '0')}.${tenths}`;
         }
 
         function updateTimerDisplay() {
             if (startTime === null) {
-                timerDisplay.textContent = '-0:05';
+                timerDisplay.textContent = '-0:05.0';
                 return;
             }
 
@@ -375,8 +376,8 @@
                 clearInterval(timerInterval);
             }
             
-            // Update timer every 100ms for smooth display
-            timerInterval = setInterval(updateTimerDisplay, 100);
+            // Update timer every 50ms so the tenths digit ticks over promptly
+            timerInterval = setInterval(updateTimerDisplay, 50);
         }
 
         function stopTimerInterval() {
@@ -552,7 +553,7 @@
             isPaused = false;
             
             // Reset timer display
-            timerDisplay.textContent = '-0:05';
+            timerDisplay.textContent = '-0:05.0';
             
             // Clear the message display but maintain space
             messageDisplay.classList.remove('visible');
