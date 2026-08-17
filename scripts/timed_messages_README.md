@@ -10,6 +10,7 @@ A web-based tool for displaying messages synchronized with audio playback. Perfe
 - **Playback Controls**: Start, Pause/Resume, and Reset buttons
 - **Fixed Layout**: 800px wide container with consistent spacing
 - **Optional Images**: 400×300 placeholder above the message; display images when an image filename is provided
+- **Video Reference**: Load a YouTube video at the top of the page to watch alongside the timer (requires serving the page — see below)
 
 ## Usage
 
@@ -57,6 +58,44 @@ A web-based tool for displaying messages synchronized with audio playback. Perfe
 1:30.8,Fourth message at 1 minute 30.8 seconds
 ```
 
+## Video Reference
+
+A YouTube player sits at the top of the page so the source video and the message cues can be checked in one window instead of two.
+
+1. **Paste a YouTube URL** into the box under the video area and click **Load** (or press Enter)
+2. **Use YouTube's own control bar** for play, pause and scrubbing — hover the player to reveal it
+3. **Start the timer separately** with the Start button
+
+**The video does not sync with the timer.** Start each one by hand and line them up by eye; this is intentional for now.
+
+### Accepted URL forms
+
+| Form | Example |
+| --- | --- |
+| Standard watch link | `https://www.youtube.com/watch?v=VIDEOID` |
+| Short link | `https://youtu.be/VIDEOID` |
+| Embed link | `https://www.youtube.com/embed/VIDEOID` |
+| Shorts / live | `https://www.youtube.com/shorts/VIDEOID` |
+| Bare video ID | `VIDEOID` |
+
+Extra parameters are ignored, so links copied straight from YouTube (with `&list=`, `&index=`, and so on) work as-is. A start time in the URL (`?t=90` or `?t=1m30s`) is honored — the video opens at that point. The last URL you loaded is remembered and refilled into the box next time, but is never auto-played.
+
+If the URL can't be read, an error appears under the box and any video already loaded keeps playing.
+
+### ⚠️ The video requires the page to be served
+
+YouTube refuses to play embedded video on pages opened directly from disk (a `file://` address, i.e. double-clicking the file). The player shows **"Error 153 — Video player configuration error"**. This is a YouTube restriction on the *hosting page*; the video link itself is fine, and no embed setting works around it.
+
+**Everything except the video works normally from `file://`** — the timer, CSV messages and images are unaffected. The page detects this case and shows a note explaining it.
+
+To use the video, run the included helper from this folder:
+
+```bash
+python3 serve.py
+```
+
+It serves the folder and opens <http://localhost:8000/timed_messages.html> in your browser. Press Ctrl+C to stop. Pass a different port if 8000 is taken (`python3 serve.py 8080`).
+
 ## Technical Details
 
 - **Timer Offset**: Starts at -5 seconds for a countdown effect
@@ -67,6 +106,7 @@ A web-based tool for displaying messages synchronized with audio playback. Perfe
 - **Transition Duration**: 0.2 seconds fade in/out
 - **Container Width**: Fixed at 800px
 - **Message Display**: Always shows bordered area, even when empty
+- **Video Panel**: 400×225 privacy-mode (`youtube-nocookie.com`) embed using YouTube's native controls; no player library is loaded
 
 ## Browser Compatibility
 
@@ -78,9 +118,10 @@ Works in all modern browsers:
 
 ## File Requirements
 
-- Single HTML file - no dependencies required
-- Works offline - no internet connection needed
-- No server required - just open the file in a browser
+- Single HTML file - no dependencies required, no libraries loaded
+- **Timer, messages and images**: work fully offline; just open the file in a browser, no server needed
+- **Video reference only**: needs an internet connection *and* the page served over `http://` (see [The video requires the page to be served](#️-the-video-requires-the-page-to-be-served))
+- For the video: run `python3 serve.py` from this folder (Python 3.7+, no packages to install)
 - For images: place files in an `images/` folder alongside `timed_messages.html`. Use their filenames in the third CSV column.
 
 ## Tips for Audio Synchronization
@@ -89,6 +130,7 @@ Works in all modern browsers:
 2. **Verify timestamps** match your audio events
 3. **Use pause/resume** to check specific moments — the paused timer shows the exact tenth
 4. **Adjust CSV timestamps** as needed and restart — use tenths (e.g., `0:05.5`) to nudge a cue by a fraction of a second
+5. **Load the video reference** and scrub it to the moment in question, so the on-screen action and the message cue can be compared side by side
 
 ## Example Use Cases
 

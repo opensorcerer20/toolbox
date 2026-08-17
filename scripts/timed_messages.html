@@ -82,6 +82,110 @@
             display: none;
         }
 
+        /* Video reference panel - independent of the timer, for matching cues by eye */
+        .video-slot {
+            width: 400px;
+            height: 225px;
+            margin: 0 auto 10px auto;
+            border: 1px dashed #ccc;
+            border-radius: 10px;
+            background-color: #fafafa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .video-slot iframe {
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: none; /* hidden until a video is loaded */
+        }
+
+        .video-slot.has-video {
+            border-style: solid;
+        }
+
+        .video-slot.has-video iframe {
+            display: block;
+        }
+
+        .video-slot.has-video .placeholder-label {
+            display: none;
+        }
+
+        .video-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .video-url-input {
+            width: 300px;
+            padding: 8px;
+            font-size: 11pt;
+            font-family: 'Courier New', monospace;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        .video-url-input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .load-button {
+            padding: 8px 18px;
+            font-size: 11pt;
+            color: white;
+            background-color: #2196F3;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .load-button:hover {
+            background-color: #0b7dda;
+        }
+
+        .video-error {
+            font-size: 11pt;
+            color: #d32f2f;
+            min-height: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* Shown only when the page itself was opened from disk (file://) */
+        .video-note {
+            display: none;
+            width: 500px;
+            margin: 0 auto 20px auto;
+            padding: 10px;
+            font-size: 10.5pt;
+            line-height: 1.5;
+            text-align: left;
+            color: #7a5c00;
+            background-color: #fff8e1;
+            border: 1px solid #ffe082;
+            border-radius: 5px;
+        }
+
+        .video-note.visible {
+            display: block;
+        }
+
+        .video-note code {
+            font-family: 'Courier New', monospace;
+            background-color: #fff3cd;
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+
         .header {
             margin-bottom: 20px;
             color: #333;
@@ -198,7 +302,23 @@
     <div class="message-container">
         <div class="header">
             <h1>Timed Messages Display</h1>
-            <p>Used for syncing with audio playback to verify animation event timestamps. Optional images will appear above each message when specified.</p>
+            <p>Used for syncing with audio playback to verify animation event timestamps. Optional images will appear above each message when specified. Load a YouTube video below to watch alongside the timer — it is controlled separately and does not sync with it.</p>
+        </div>
+        <div id="videoSlot" class="video-slot">
+            <span class="placeholder-label">400×225 — paste a YouTube URL below</span>
+            <!-- Video reference (no src until a video is loaded) -->
+            <iframe id="ytFrame"
+                    title="YouTube video reference"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
+                    allowfullscreen></iframe>
+        </div>
+        <div class="video-controls">
+            <input id="videoUrl" type="text" class="video-url-input" placeholder="YouTube URL or video ID" />
+            <button id="loadVideoButton" class="load-button">Load</button>
+        </div>
+        <div id="videoError" class="video-error"></div>
+        <div id="videoNote" class="video-note">
+            <strong>Video needs this page to be served.</strong> This file was opened directly from disk, and YouTube refuses to play embeds on <code>file://</code> pages (it reports "Error 153"). The timer and messages work fine as-is — only the video is affected. To use the video, run <code>python3 serve.py</code> in this folder; it will reopen this page at <code>http://localhost:8000</code>.
         </div>
         <div id="timerDisplay" class="timer-display">-0:05.0</div>
         <div id="messageDisplay" class="message">
@@ -231,6 +351,7 @@
          * - Messages fade in 0.2 seconds before their timestamp
          * - Pause/Resume functionality
          * - Fixed 800px container with visible borders
+         * - Optional YouTube reference video, played and scrubbed with YouTube's own control bar; it is independent of the timer and is not synced with it
          *
          * Usage:
          * 1. Enter messages in CSV format: timestamp,message (timestamp may include tenths, e.g. 0:05.5)
@@ -259,6 +380,12 @@
         const resetButton = document.getElementById('resetButton');
         const imageSlot = document.getElementById('imageSlot');
         const imageSlotImage = document.getElementById('imageSlotImage');
+        const videoSlot = document.getElementById('videoSlot');
+        const ytFrame = document.getElementById('ytFrame');
+        const videoUrl = document.getElementById('videoUrl');
+        const loadVideoButton = document.getElementById('loadVideoButton');
+        const videoError = document.getElementById('videoError');
+        const videoNote = document.getElementById('videoNote');
         let timeouts = [];
         let timerInterval = null;
         let startTime = null;
@@ -286,8 +413,7 @@
         setTextareaDefaultFromDefaults();
 
         function parseTimestamp(timestamp) {
-            // Parse timestamp in format "M:SS", "MM:SS", or with tenths "M:SS.T"
-            // (e.g., "0:05" = 5 seconds, "0:05.5" = 5.5 seconds)
+            // Parse timestamp in format "M:SS", "MM:SS", or with tenths "M:SS.T" (e.g., "0:05" = 5 seconds, "0:05.5" = 5.5 seconds)
             const parts = timestamp.split(':');
             const minutes = parseInt(parts[0], 10) || 0;
             const seconds = parseFloat(parts[1]) || 0; // parseFloat keeps the fractional part
@@ -433,6 +559,100 @@
         function clearImage() {
             imageSlot.classList.remove('has-image');
             imageSlotImage.removeAttribute('src');
+        }
+
+        /**
+         * Extract an 11-character YouTube video ID from a pasted URL.
+         * Accepts watch?v=ID, youtu.be/ID, /embed/ID, /shorts/ID, /live/ID, or a bare ID.
+         * @param {string} input - Pasted URL or video ID
+         * @returns {string|null} The video ID, or null if none was found
+         */
+        function parseYouTubeId(input) {
+            const text = (input || '').trim();
+            if (!text) return null;
+
+            // A bare video ID pasted on its own
+            if (/^[A-Za-z0-9_-]{11}$/.test(text)) return text;
+
+            // Otherwise pull the ID out of any of the common URL shapes
+            const match = text.match(/(?:[?&]v=|youtu\.be\/|\/embed\/|\/shorts\/|\/live\/)([A-Za-z0-9_-]{11})/);
+            return match ? match[1] : null;
+        }
+
+        /**
+         * Read a start offset from a shared URL's t= or start= parameter.
+         * Accepts plain seconds ("90") and YouTube's h/m/s form ("1m30s").
+         * @param {string} input - Pasted URL
+         * @returns {number|null} Start offset in seconds, or null if absent
+         */
+        function parseStartSeconds(input) {
+            const match = (input || '').match(/[?&](?:t|start)=([^&\s]+)/);
+            if (!match) return null;
+
+            const value = match[1];
+            if (/^\d+$/.test(value)) return parseInt(value, 10);
+
+            const hms = value.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/);
+            if (!hms) return null;
+
+            const seconds = (parseInt(hms[1] || 0, 10) * 3600) +
+                            (parseInt(hms[2] || 0, 10) * 60) +
+                            parseInt(hms[3] || 0, 10);
+            return seconds > 0 ? seconds : null;
+        }
+
+        /**
+         * Load the video named in the URL box into the reference panel.
+         * Playback is controlled entirely by YouTube's own control bar and is deliberately independent of the timer - start each one by hand.
+         */
+        function loadVideo() {
+            const raw = videoUrl.value.trim();
+            const id = parseYouTubeId(raw);
+
+            if (!id) {
+                // Leave any already-loaded video alone so a bad paste can't interrupt playback
+                videoError.textContent = raw
+                    ? 'Could not find a YouTube video ID in that URL.'
+                    : 'Enter a YouTube URL or video ID.';
+                return;
+            }
+
+            videoError.textContent = '';
+
+            // enablejsapi=1 is unused today; it is the prerequisite for syncing with the timer later
+            let src = `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1&enablejsapi=1`;
+            const startSeconds = parseStartSeconds(raw);
+            if (startSeconds) {
+                src += `&start=${startSeconds}`;
+            }
+
+            ytFrame.src = src;
+            videoSlot.classList.add('has-video');
+
+            try {
+                localStorage.setItem('timedMessagesVideoUrl', raw);
+            } catch (e) {
+                // Storage may be unavailable (e.g. private browsing); loading still works
+            }
+        }
+
+        function restoreLastVideoUrl() {
+            try {
+                const saved = localStorage.getItem('timedMessagesVideoUrl');
+                if (saved) {
+                    // Restore into the input only - never auto-load or auto-play on open
+                    videoUrl.value = saved;
+                }
+            } catch (e) {
+                // No-op if storage is unavailable
+            }
+        }
+
+        restoreLastVideoUrl();
+
+        // YouTube rejects embeds hosted on a file:// origin, so warn up front rather than letting the player fail with an opaque "Error 153"
+        if (window.location.protocol === 'file:') {
+            videoNote.classList.add('visible');
         }
 
         function clearAllTimeouts() {
@@ -581,6 +801,14 @@
         startButton.addEventListener('click', startMessages);
         pauseButton.addEventListener('click', pauseOrResumeMessages);
         resetButton.addEventListener('click', resetMessages);
+
+        // Video reference panel (stays usable while the timer runs)
+        loadVideoButton.addEventListener('click', loadVideo);
+        videoUrl.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                loadVideo();
+            }
+        });
     </script>
 </body>
 </html>
