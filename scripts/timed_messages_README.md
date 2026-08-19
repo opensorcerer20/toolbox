@@ -66,7 +66,7 @@ A YouTube player sits at the top of the page and plays **in sync with the timer*
 
 1. **Paste a YouTube URL** into the box under the video area and click **Load** (or press Enter)
 2. **Enter the video timestamp** that should land on `0:00` — the moment in the video you are checking against. Same format as the CSV column: `M:SS` or `M:SS.T`, e.g. `1:30` or `1:30.5`. Press Enter to jump the player to that frame and preview it.
-3. **Click Start.** The video begins playing immediately, three seconds *earlier* than your timestamp, so it arrives at that exact frame as the countdown reaches `0:00`.
+3. **Click Start.** The video begins playing three seconds *earlier* than your timestamp, so it arrives at that exact frame as the countdown reaches `0:00`. The countdown holds until the video is actually rolling — see [Getting the first run as tight as the rest](#getting-the-first-run-as-tight-as-the-rest).
 
 From `0:00` onward the video position is always your timestamp plus the timer reading, so a message cue at `0:05.5` lines up with the video 5.5 seconds past your mark.
 
@@ -80,6 +80,15 @@ From `0:00` onward the video position is always your timestamp plus the timer re
 | **Reset** | Pauses and parks the video back on your timestamp, ready for another run |
 
 YouTube's own control bar is still there if you want to scrub manually between runs. Videos load at **half volume** so they sit under your own audio; raise or lower it with the player's volume control.
+
+### Getting the first run as tight as the rest
+
+A freshly loaded YouTube player holds a poster frame but no decoded video, so its very first play used to begin a beat late while the timer ran on regardless — messages landed early on run one and were correct on every run after. Two things prevent that now, and neither needs anything from you:
+
+- **Pre-buffering.** As soon as a timestamp is set, the page quietly plays the frame your run will start from — muted, for a moment — then pauses back on your chosen frame. You may see the panel flicker briefly; that is the video being warmed. Start then resumes an already-buffered player.
+- **Start waits for the video.** The countdown does not begin until the player reports that it is genuinely rolling. The timer readout sits dimmed for that moment, then brightens as the countdown starts. Warmed up, this is usually imperceptible; on a slow connection it is a visible pause before `-0:03.0` starts counting, which is the point — the timer never runs ahead of the video.
+
+If the player never reports back (a stall, an ad, a network error), the run starts anyway after 3 seconds rather than hanging.
 
 ### Timestamps in the first 3 seconds
 
@@ -135,7 +144,7 @@ Once you know the right offset, fold it into the CSV timestamps to make it perma
 - **Transition Duration**: 0.2 seconds fade in/out
 - **Container Width**: Fixed at 800px
 - **Message Display**: Always shows bordered area, even when empty
-- **Video Panel**: 400×225 privacy-mode (`youtube-nocookie.com`) player driven by YouTube's IFrame Player API, implemented in `video.js` as a `VideoPanel` object; the page passes it the shared `parseTimestamp`/`formatTime` helpers and its timeout registry via `VideoPanel.init()`
+- **Video Panel**: 400×225 privacy-mode (`youtube-nocookie.com`) player driven by YouTube's IFrame Player API, implemented in `scripts/video.js` as a `VideoPanel` object; the page passes it the shared `parseTimestamp`/`formatTime` helpers and its timeout registry via `VideoPanel.init()`
 - **Volume**: Videos load at 50%, adjustable from the player's own volume control
 - **Video Sync**: The video position is derived from the timer (`your timestamp + timer elapsed`) rather than tracked independently, so pausing and resuming re-seeks rather than accumulating drift
 - **Autoplay**: Playback always begins inside the Start click so browsers do not block it; a timestamp under 3 seconds is held back with a muted play/pause priming step that keeps the later start permitted
@@ -150,12 +159,24 @@ Works in all modern browsers:
 
 ## File Requirements
 
-- Four files: `timed_messages.html` (the page), `timed_messages.css` (styling), `timed_messages.js` (timer, messages, images) and `video.js` (the video panel) - keep them in the same folder
+- Layout - keep the folder structure intact, since the page loads its assets by relative path:
+
+  ```
+  timed_messages.html          the page
+  css/timed_messages.css       styling
+  scripts/timed_messages.js    timer, messages, images
+  scripts/video.js             the video panel
+  serve.py                     local server, needed only for the video
+  images/                      optional message images, subfolders allowed
+  tests/                       Node checks for the video sync logic, not needed to run the page
+  ```
+
 - No libraries or build step; the scripts are plain scripts, not modules, so they load from `file://` too
 - **Timer, messages and images**: work fully offline; just open the file in a browser, no server needed
 - **Video reference only**: needs an internet connection *and* the page served over `http://` (see [The video requires the page to be served](#️-the-video-requires-the-page-to-be-served))
 - For the video: run `python3 serve.py` from this folder (Python 3.7+, no packages to install)
-- For images: place files in an `images/` folder alongside `timed_messages.html`, in the folder itself or in subdirectories of it. Use their path relative to `images/` in the third CSV column (e.g. `photo.png` or `storyboard1/photo.png`).
+- For images: place files in the `images/` folder, in the folder itself or in subdirectories of it. Use their path relative to `images/` in the third CSV column (e.g. `photo.png` or `storyboard1/photo.png`).
+- For the tests: see [tests/README.md](tests/README.md). They are not needed to run the page.
 
 ## Tips for Audio Synchronization
 
@@ -174,5 +195,5 @@ Works in all modern browsers:
 
 ## Sharing
 
-Share `timed_messages.html` together with `timed_messages.css`, `timed_messages.js`, `video.js` and `serve.py` (plus the `images/` folder if you use images). Recipients can open the HTML file directly for the timer and messages, or run `python3 serve.py` when they want the video panel too - no installation or setup required either way.
+Share the whole folder - `timed_messages.html` needs `css/` and `scripts/` beside it, plus `serve.py` for the video and `images/` if you use images. Recipients can open the HTML file directly for the timer and messages, or run `python3 serve.py` when they want the video panel too - no installation or setup required either way.
 

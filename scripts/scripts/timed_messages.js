@@ -303,6 +303,34 @@ function scheduleMessages() {
 }
 
 /**
+ * Start the clock and the message cues. Split out of startMessages because it does not run on the
+ * click: when a video is loaded it waits until the player reports that it is actually rolling, so
+ * a cold first play cannot leave the timer running ahead of the video.
+ */
+function beginRun() {
+    // Whatever brought us here - video rolling, the safety fallback, or no video at all - the
+    // page is no longer waiting
+    timerDisplay.classList.remove('waiting');
+
+    // Pause only means something once there is a clock to pause: pausing during the pre-roll wait
+    // and then resuming would measure the gap against a startTime that was never set
+    pauseButton.disabled = false;
+
+    // Initialize start time and reset pause state
+    // Offset by the countdown so the timer starts at -0:03
+    startTime = Date.now() + COUNTDOWN_MS;
+    totalPausedDuration = 0;
+    isPaused = false;
+
+    // Start timer display updates
+    startTimerInterval();
+    updateTimerDisplay();
+
+    // Schedule messages
+    scheduleMessages();
+}
+
+/**
  * Start the timer and message display
  * - Parses CSV from textarea (or uses default messages)
  * - Timer starts at -3 seconds (countdown effect)
@@ -326,9 +354,8 @@ function startMessages() {
         messages = defaultMessages;
     }
     
-    // Initialize start time and reset pause state
-    // Offset by the countdown so the timer starts at -0:03
-    startTime = Date.now() + COUNTDOWN_MS;
+    // The clock itself is set in beginRun, once the video is known to be rolling
+    startTime = null;
     totalPausedDuration = 0;
     isPaused = false;
 
@@ -340,22 +367,18 @@ function startMessages() {
     csvInput.disabled = true;
     VideoPanel.setDisabled(true);
     messageOffset.disabled = true;
-    pauseButton.disabled = false;
+    // Pause stays disabled until beginRun; Reset is live at once so a slow start can be abandoned
     resetButton.disabled = false;
     pauseButton.textContent = 'Pause';
 
-    // Start timer display updates
-    startTimerInterval();
+    // Show the countdown's starting value, dimmed, until the run actually begins
     updateTimerDisplay();
-    
-    // Schedule messages
-    scheduleMessages();
+    timerDisplay.classList.add('waiting');
 
-    // Start the video rolling so it reaches the chosen timestamp exactly at 0:00.
-    // Must run after scheduleMessages, which clears all pending timeouts and would otherwise
-    // drop a held-back video start. Must also stay on the synchronous path of the click -
-    // deferring it would lose the user gesture that the browser's autoplay policy requires.
-    VideoPanel.syncTo(-COUNTDOWN_MS, true);
+    // Start the video rolling so it reaches the chosen timestamp exactly at 0:00, and let it
+    // start the clock once it is genuinely playing. Staying on the synchronous path of the click
+    // matters: deferring this call would lose the user gesture the autoplay policy requires.
+    VideoPanel.syncTo(-COUNTDOWN_MS, true, beginRun);
 }
 
 function pauseOrResumeMessages() {
@@ -403,7 +426,8 @@ function resetMessages() {
     pausedTime = null;
     isPaused = false;
     
-    // Reset timer display
+    // Reset timer display, dropping the dim in case Reset landed during the pre-roll wait
+    timerDisplay.classList.remove('waiting');
     timerDisplay.textContent = formatTime(-COUNTDOWN_MS);
 
     // Park the video back on the chosen timestamp, ready for another run
@@ -446,5 +470,6 @@ messageOffset.addEventListener('change', readMessageOffsetMs);
 VideoPanel.init({
     parseTimestamp: parseTimestamp,
     formatTime: formatTime,
-    registerTimeout: (timeout) => timeouts.push(timeout)
+    registerTimeout: (timeout) => timeouts.push(timeout),
+    countdownMs: COUNTDOWN_MS
 });

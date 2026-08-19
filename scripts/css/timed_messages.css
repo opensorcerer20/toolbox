@@ -274,6 +274,12 @@ body {
     margin-bottom: 20px;
     font-weight: bold;
     font-family: 'Courier New', monospace;
+    transition: opacity 0.15s ease-in-out;
+}
+
+/* Start has been pressed but the video has not begun rolling yet, so the countdown is held */
+.timer-display.waiting {
+    opacity: 0.4;
 }
 
 .csv-input-container {

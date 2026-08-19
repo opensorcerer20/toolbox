@@ -13,6 +13,14 @@
  * earlier. Deriving the position from the timer rather than tracking playback state is what makes
  * pause/resume re-align exactly instead of accumulating drift.
  *
+ * Two mechanisms keep that equation honest at the moment a run starts, when a cold player would
+ * otherwise take a beat to wake up while the timer ran on regardless:
+ *
+ *   - warm-up: once a timestamp is known, the frame a run would roll from is played muted and paused,
+ *     so Start resumes buffered media instead of waking a merely-cued player
+ *   - start gate: syncTo can hold the caller's clock until the player actually reports PLAYING,
+ *     so the timer never runs ahead of a video that has not begun
+ *
  * Requires: a page that calls VideoPanel.init() after the DOM exists, and YouTube's iframe_api script
  * loaded afterwards. Video playback needs the page served over http:// - see timed_messages_README.md.
  */
@@ -26,6 +34,7 @@ const VideoPanel = (function () {
     let parseTimestamp = null;   // reuses the page's M:SS / M:SS.T parser so both boxes agree
     let formatTime = null;       // reuses the page's time formatter when seeding the timestamp box
     let registerTimeout = null;  // hands deferred plays to the page so its Pause/Reset can cancel them
+    let countdownMs = 3000;      // the page's lead-in length, so warm-up targets the right frame
 
     let elements = {};
     let player = null;           // YT.Player instance, created on first load
@@ -33,6 +42,17 @@ const VideoPanel = (function () {
     let pendingVideoId = null;   // video requested before the API finished loading
     let currentVideoId = null;   // id currently in the player, needed to re-cue it
     let startSeconds = 0;        // video position that should land on timer 0:00
+
+    // Warm-up and start-gate state. A freshly cued player holds a poster frame but no decoded
+    // media, so its first play lags; warming plays it muted once so the real start resumes
+    // an already-buffered player, and the gate holds the timer until playback truly begins.
+    let isWarming = false;          // a muted warm-up play is in flight; the next PLAYING is its
+    let warmedFor = null;           // position the player is currently warmed at
+    let parkedAt = null;            // frame the idle panel should show, restored after a warm-up
+    let hasPlayed = false;          // player has reached PLAYING at least once, so a real frame exists
+    let pendingStart = null;        // callback owed to a gated run once its video actually rolls
+    let startGateTimeout = null;    // safety timer that releases a gate playback never resolves
+    let startRequestedAt = 0;       // timestamp of the Start click, for the measured-delay log
 
     /**
      * Extract an 11-character YouTube video ID from a pasted URL.
@@ -100,13 +120,99 @@ const VideoPanel = (function () {
     }
 
     /**
-     * Park the video on a position without playing it, keeping the poster frame visible.
-     * Cues rather than seeks: seekTo on a player that has not played yet drops the poster and leaves the panel black.
+     * Park the video on a position without playing it, keeping a frame visible.
+     * Once the player has played it has a real frame to hold, so a plain seek is both correct and
+     * cheap; before that, only cueVideoById shows anything (seekTo would leave the panel black),
+     * at the cost of dropping back to an unbuffered state.
      * @param {number} seconds - Video position to park on
      */
     function parkAt(seconds) {
         if (!isReady() || !currentVideoId) return;
+
+        parkedAt = seconds;
+
+        if (hasPlayed) {
+            player.pauseVideo();
+            player.seekTo(seconds, true);
+            return;
+        }
+
+        // Re-cueing throws away any buffering, so the next Start has to warm again
+        warmedFor = null;
         player.cueVideoById({ videoId: currentVideoId, startSeconds: seconds });
+    }
+
+    /**
+     * Pre-buffer the player at a position by playing it muted and pausing the moment it rolls.
+     * This is what removes the first-play lag: Start then resumes a player holding decoded media
+     * instead of waking a cued one. Completion is handled in the PLAYING branch of onStateChange.
+     * Muted playback is exempt from the browser's autoplay policy, so no user gesture is needed.
+     * @param {number} seconds - Video position to warm
+     */
+    function warmAt(seconds) {
+        if (!isReady() || !currentVideoId) return;
+        if (isWarming || warmedFor === seconds) return;
+
+        isWarming = true;
+        warmedFor = seconds;
+        player.mute();
+        player.seekTo(seconds, true);
+        player.playVideo();
+    }
+
+    /**
+     * Warm the frame a run would actually roll from - the countdown's worth of video before the
+     * chosen timestamp, or the video's own start when the timestamp sits inside the countdown.
+     * The warmed range covers the preview frame too, so parking back on the timestamp stays cheap.
+     */
+    function warmForStart() {
+        if (!isReady()) return;
+        warmAt(Math.max(0, readStartSeconds() - (countdownMs / 1000)));
+    }
+
+    /** Drop a pending gate without firing it (Pause and Reset during the pre-roll wait). */
+    function clearStartGate() {
+        if (startGateTimeout !== null) {
+            clearTimeout(startGateTimeout);
+            startGateTimeout = null;
+        }
+        pendingStart = null;
+    }
+
+    /** Release a gated run: the video is rolling (or we gave up waiting for it). */
+    function releaseStartGate() {
+        if (!pendingStart) return;
+
+        const callback = pendingStart;
+        pendingStart = null;
+        if (startGateTimeout !== null) {
+            clearTimeout(startGateTimeout);
+            startGateTimeout = null;
+        }
+        console.debug(`[VideoPanel] video rolling ${Date.now() - startRequestedAt}ms after Start`);
+        callback();
+    }
+
+    /**
+     * The one place that learns playback has really begun, which both the warm-up and the start
+     * gate hang off. Everything else in the panel drives the player; this reacts to it.
+     */
+    function onPlayerStateChange(event) {
+        if (event.data !== YT.PlayerState.PLAYING) return;
+
+        hasPlayed = true;
+
+        if (isWarming) {
+            // Warm-up done: stop, return to the frame the user is meant to be looking at, and
+            // give the sound back. The warmed media stays buffered either way.
+            isWarming = false;
+            player.pauseVideo();
+            player.seekTo(parkedAt !== null ? parkedAt : warmedFor, true);
+            player.unMute();
+            return;
+        }
+
+        releaseStartGate();
     }
 
     /**
@@ -126,9 +232,37 @@ const VideoPanel = (function () {
      * Move the video to wherever the timer says it should be, then play or hold it there.
      * @param {number} elapsedMs - Current timer position in milliseconds
      * @param {boolean} shouldPlay - Whether playback should be running from here
+     * @param {Function} [onRolling] - Called once the video is actually playing, so the caller can
+     *                                 hold its clock until then. Omit to start playback ungated.
      */
-    function syncTo(elapsedMs, shouldPlay) {
-        if (!isReady()) return;
+    function syncTo(elapsedMs, shouldPlay, onRolling) {
+        if (!isReady()) {
+            // Nothing to wait for, so an unusable player must not strand the caller's clock
+            if (onRolling) onRolling();
+            return;
+        }
+
+        // A warm-up may still be running muted; this play supersedes it, and without the unMute
+        // the whole run would be silent. Only undo our own mute - a mute the viewer set on the
+        // player itself is theirs to keep.
+        if (isWarming) {
+            isWarming = false;
+            player.unMute();
+        }
+
+        // Playing already (a warm-up caught mid-flight) means the coming playVideo would raise no
+        // state change to gate on, so stop first and let the real start produce a real transition
+        const wasPlaying = player.getPlayerState() === YT.PlayerState.PLAYING;
+        if (wasPlaying) player.pauseVideo();
+
+        clearStartGate();
+        if (onRolling) {
+            startRequestedAt = Date.now();
+            pendingStart = onRolling;
+            // If playback never reports in - a stall, an ad, an error - start anyway rather than
+            // leaving the page frozen on a countdown that never begins
+            startGateTimeout = setTimeout(releaseStartGate, countdownMs);
+        }
 
         const position = positionFor(elapsedMs);
 
@@ -136,8 +270,14 @@ const VideoPanel = (function () {
             player.seekTo(position, true);
             if (shouldPlay) {
                 player.playVideo();
+                // Belt and braces: if the player is somehow already running, no PLAYING event is
+                // coming and the gate would sit until its fallback fires
+                if (!wasPlaying && player.getPlayerState() === YT.PlayerState.PLAYING) {
+                    releaseStartGate();
+                }
             } else {
                 player.pauseVideo();
+                releaseStartGate();
             }
             return;
         }
@@ -151,6 +291,12 @@ const VideoPanel = (function () {
 
         player.seekTo(0, true);
         player.pauseVideo();
+
+        // Nothing to wait for on this path: the video is deliberately parked, and its own start is
+        // scheduled against the timer, so the timer has to be running for it to be right.
+        // This runs before the deferred play is armed because the caller schedules its message
+        // cues here, and that clears every pending timeout - including one armed too early.
+        releaseStartGate();
 
         if (shouldPlay) {
             const timeout = setTimeout(() => {
@@ -169,6 +315,15 @@ const VideoPanel = (function () {
             // The API script is still downloading; onYouTubeIframeAPIReady will pick this up
             pendingVideoId = videoId;
             return;
+        }
+
+        if (videoId !== currentVideoId) {
+            // A different video has never played and is not warmed, whatever the old one managed.
+            // This also keeps parkAt on its cueVideoById path, which is what actually swaps the video.
+            hasPlayed = false;
+            warmedFor = null;
+            parkedAt = null;
+            isWarming = false;
         }
 
         currentVideoId = videoId;
@@ -190,7 +345,11 @@ const VideoPanel = (function () {
                         // Only re-cue when a start position was asked for; otherwise leave the
                         // freshly loaded player alone so its poster frame stays visible
                         if (seconds > 0) parkAt(seconds);
-                    }
+                        // Warm either way: an empty box means a run rolls from the video's own
+                        // start, which deserves pre-buffering just as much
+                        warmForStart();
+                    },
+                    onStateChange: onPlayerStateChange
                 }
             });
             return;
@@ -198,6 +357,7 @@ const VideoPanel = (function () {
 
         if (isPlayerReady) {
             parkAt(readStartSeconds());
+            warmForStart();
         } else {
             pendingVideoId = videoId;
         }
@@ -255,11 +415,13 @@ const VideoPanel = (function () {
      * @param {Function} deps.parseTimestamp - Parses M:SS / M:SS.T into milliseconds
      * @param {Function} deps.formatTime - Formats milliseconds as M:SS.T
      * @param {Function} deps.registerTimeout - Receives deferred-play timeout ids so the page can cancel them
+     * @param {number} deps.countdownMs - Lead-in length, so warm-up targets the frame Start rolls from
      */
     function init(deps) {
         parseTimestamp = deps.parseTimestamp;
         formatTime = deps.formatTime;
         registerTimeout = deps.registerTimeout;
+        if (Number.isFinite(deps.countdownMs)) countdownMs = deps.countdownMs;
 
         elements = {
             videoSlot: document.getElementById('videoSlot'),
@@ -279,7 +441,12 @@ const VideoPanel = (function () {
                 // Preview the chosen frame without starting a run
                 startSeconds = readStartSeconds();
                 parkAt(startSeconds);
+                warmForStart();
             }
+        });
+        // Warming on change too, so a typed timestamp is pre-buffered without pressing Enter
+        elements.videoStart.addEventListener('change', () => {
+            if (isReady()) warmForStart();
         });
 
         restoreLastUrl();
@@ -313,15 +480,19 @@ const VideoPanel = (function () {
 
         /** Hold the video where it is (used when the timer pauses). */
         pause() {
+            // Pausing during the pre-roll wait must not leave a gate that fires later
+            clearStartGate();
             if (isReady()) player.pauseVideo();
         },
 
         /** Pause and return the video to the captured start position, ready for another run. */
         parkAtStart() {
+            clearStartGate();
             if (!isReady()) return;
             // A plain seek is right here: the video has already played, so it has a frame to show
             player.pauseVideo();
             player.seekTo(startSeconds, true);
+            parkedAt = startSeconds;
         },
 
         /** Lock or unlock the timestamp box while a run is in progress. */
