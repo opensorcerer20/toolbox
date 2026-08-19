@@ -8,8 +8,8 @@ A web-based tool for displaying messages synchronized with audio playback. Perfe
 - **Timer Display**: Visual countdown starting at -3 seconds, showing tenths of a second (`M:SS.T`)
 - **Smooth Transitions**: Messages fade in/out with transitions
 - **Playback Controls**: Start, Pause/Resume, and Reset buttons
-- **Fixed Layout**: 800px wide container with consistent spacing
-- **Optional Images**: 400×300 placeholder above the message; display images when an image filename is provided
+- **Two-Column Layout**: messages, timer and their controls on the left, the YouTube panel on the right; the columns stack into one on narrow windows
+- **Optional Images**: 400×300 placeholder above the message; display images when an image path is provided, from the `images/` folder or any subdirectory of it
 - **Synced Video**: Load a YouTube video and it plays in step with the timer, reaching a timestamp you choose exactly as the countdown hits zero (requires serving the page — see below)
 - **Message Offset**: Nudge every message later by 0.0–0.9 seconds without editing the CSV
 
@@ -47,7 +47,7 @@ A web-based tool for displaying messages synchronized with audio playback. Perfe
 - **Timestamp**: Use `M:SS` or `MM:SS` (e.g., `0:05`, `1:23`, `2:45`)
 - **Tenths of a second (optional)**: Append a decimal to the seconds — `M:SS.T` (e.g., `0:05.5`, `1:23.7`). Whole-second and fractional timestamps can be mixed freely in the same list. More than one decimal place is accepted and honored (e.g., `0:05.25`), though the timer itself only displays tenths.
 - **Message**: Any text
-- **Image (optional)**: Filename of an image located in the `images/` folder (e.g., `photo.png`, `banner.jpg`)
+- **Image (optional)**: Path to an image inside the `images/` folder. Either a plain filename (`photo.png`, `banner.jpg`) or a subdirectory path (`storyboard1/photo.png`). If the file is missing, the slot falls back to its blank placeholder.
 - **Commas in message**: Supported. If you include an image, the script uses the first comma for the timestamp and the last comma for the image, so message text between them may contain commas.
 - **One message per line**
 
@@ -111,7 +111,7 @@ To use the video, run the included helper from this folder:
 python3 serve.py
 ```
 
-It serves the folder and opens <http://localhost:8000/timed_messages.html> in your browser. Press Ctrl+C to stop. Pass a different port if 8000 is taken (`python3 serve.py 8080`).
+It serves the folder and opens <http://localhost:8123/timed_messages.html> in your browser. Press Ctrl+C to stop. Pass a different port if 8123 is taken (`python3 serve.py 8080`).
 
 ## Message Offset
 
@@ -150,12 +150,12 @@ Works in all modern browsers:
 
 ## File Requirements
 
-- Two files: `timed_messages.html` (timer, messages, images) and `video.js` (the video panel) - keep them in the same folder
-- No libraries or build step; `video.js` is a plain script, not a module, so it loads from `file://` too
+- Four files: `timed_messages.html` (the page), `timed_messages.css` (styling), `timed_messages.js` (timer, messages, images) and `video.js` (the video panel) - keep them in the same folder
+- No libraries or build step; the scripts are plain scripts, not modules, so they load from `file://` too
 - **Timer, messages and images**: work fully offline; just open the file in a browser, no server needed
 - **Video reference only**: needs an internet connection *and* the page served over `http://` (see [The video requires the page to be served](#️-the-video-requires-the-page-to-be-served))
 - For the video: run `python3 serve.py` from this folder (Python 3.7+, no packages to install)
-- For images: place files in an `images/` folder alongside `timed_messages.html`. Use their filenames in the third CSV column.
+- For images: place files in an `images/` folder alongside `timed_messages.html`, in the folder itself or in subdirectories of it. Use their path relative to `images/` in the third CSV column (e.g. `photo.png` or `storyboard1/photo.png`).
 
 ## Tips for Audio Synchronization
 
@@ -174,5 +174,5 @@ Works in all modern browsers:
 
 ## Sharing
 
-Share `timed_messages.html` together with `video.js` and `serve.py` (plus the `images/` folder if you use images). Recipients can open the HTML file directly for the timer and messages, or run `python3 serve.py` when they want the video panel too - no installation or setup required either way.
+Share `timed_messages.html` together with `timed_messages.css`, `timed_messages.js`, `video.js` and `serve.py` (plus the `images/` folder if you use images). Recipients can open the HTML file directly for the timer and messages, or run `python3 serve.py` when they want the video panel too - no installation or setup required either way.
 

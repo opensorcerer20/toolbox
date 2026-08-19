@@ -1,0 +1,362 @@
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+}
+
+.message-container {
+    text-align: center;
+    padding: 20px;
+    width: 1060px;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0; /* top-aligned; the 20px padding above provides the top margin */
+}
+
+/* Two columns: messages and their controls on the left, video panel on the right,
+   with a hairline rule filling the middle track */
+.layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 1px 420px;
+    gap: 30px;
+    align-items: start;
+}
+
+.column-main,
+.column-video {
+    min-width: 0; /* let grid children shrink instead of forcing the row wider */
+}
+
+.column-divider {
+    align-self: stretch; /* run the full height of the taller column */
+    background-color: #ddd;
+}
+
+/* Narrow windows fall back to the original single stack, video last */
+@media (max-width: 1100px) {
+    .layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .column-divider {
+        display: none; /* a vertical rule makes no sense once the columns stack */
+    }
+}
+
+.message {
+    font-size: 16pt;
+    color: #333;
+    min-height: 60px;
+    display: flex;
+    flex-direction: column; /* stack image above text */
+    align-items: center;
+    justify-content: center;
+    gap: 20px; /* ~20px spacing between image and message text */
+    padding: 5px 20px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+}
+
+.message-text {
+    opacity: 1;
+    transition: opacity 0.2s ease-in-out;
+    background-color: #cccccc;
+    padding: 5px;
+    width: 100%;
+    max-width: 500px;
+    box-sizing: border-box;
+}
+
+.message.visible .message-text {
+    opacity: 1;
+}
+
+/* Image placeholder area for optional images during script run */
+.image-slot {
+    width: 400px;
+    max-width: 100%;
+    height: 300px;
+    margin: 0 auto 0 auto; /* spacing handled by parent gap */
+    border: 1px dashed #ccc;
+    border-radius: 10px;
+    background-color: #fafafa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.image-slot img {
+    max-width: 100%;
+    max-height: 100%;
+    display: none; /* hidden until an image is set */
+}
+
+.image-slot.has-image img {
+    display: block;
+}
+
+.placeholder-label {
+    font-size: 12pt;
+    color: #999;
+}
+
+.image-slot.has-image .placeholder-label {
+    display: none;
+}
+
+/* Video reference panel - plays in sync with the timer */
+.video-slot {
+    width: 400px;
+    max-width: 100%;
+    height: 225px;
+    margin: 0 auto 10px auto;
+    border: 1px dashed #ccc;
+    border-radius: 10px;
+    background-color: #fafafa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* #ytFrame starts as an empty mount div and is replaced by the API's iframe */
+.video-slot #ytFrame,
+.video-slot iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: none; /* hidden until a video is loaded */
+}
+
+.video-slot.has-video {
+    border-style: solid;
+}
+
+.video-slot.has-video #ytFrame,
+.video-slot.has-video iframe {
+    display: block;
+}
+
+.video-slot.has-video .placeholder-label {
+    display: none;
+}
+
+.video-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.video-url-input {
+    width: 100%;
+    max-width: 300px;
+    padding: 8px;
+    font-size: 11pt;
+    font-family: 'Courier New', monospace;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+.video-url-input:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.video-start-label {
+    font-size: 11pt;
+    color: #333;
+}
+
+.video-start-input {
+    width: 80px;
+    padding: 8px;
+    font-size: 11pt;
+    font-family: 'Courier New', monospace;
+    text-align: center;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+.video-start-input:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.video-start-input:disabled {
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.load-button {
+    padding: 8px 18px;
+    font-size: 11pt;
+    color: white;
+    background-color: #2196F3;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.load-button:hover {
+    background-color: #0b7dda;
+}
+
+.video-error {
+    font-size: 11pt;
+    color: #d32f2f;
+    min-height: 16px;
+    margin-bottom: 20px;
+}
+
+/* Shown only when the page itself was opened from disk (file://) */
+.video-note {
+    display: none;
+    width: 100%;
+    max-width: 500px;
+    box-sizing: border-box;
+    margin: 0 auto 20px auto;
+    padding: 10px;
+    font-size: 10.5pt;
+    line-height: 1.5;
+    text-align: left;
+    color: #7a5c00;
+    background-color: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 5px;
+}
+
+.video-note.visible {
+    display: block;
+}
+
+.video-note code {
+    font-family: 'Courier New', monospace;
+    background-color: #fff3cd;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+.header {
+    margin: 0 auto 30px auto;
+    max-width: 800px; /* keep the intro line length readable across the full page */
+    color: #333;
+    text-align: center;
+}
+
+.header h1 {
+    font-size: 20pt;
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.header p {
+    font-size: 12pt;
+    margin: 0;
+    color: #666;
+    line-height: 1.4;
+}
+
+.timer-display {
+    font-size: 24pt;
+    color: #666;
+    margin-bottom: 20px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+}
+
+.csv-input-container {
+    margin-bottom: 20px;
+    width: 100%;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.csv-input-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14pt;
+    color: #333;
+    font-weight: bold;
+}
+
+.csv-input {
+    width: 100%;
+    min-height: 120px;
+    padding: 10px;
+    font-size: 12pt;
+    font-family: 'Courier New', monospace;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.csv-input:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+.csv-input:disabled {
+    background-color: #f5f5f5;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.button-group {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.start-button, .pause-button, .reset-button {
+    padding: 12px 24px;
+    font-size: 14pt;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.start-button {
+    background-color: #4CAF50;
+}
+
+.start-button:hover:not(:disabled) {
+    background-color: #45a049;
+}
+
+.pause-button {
+    background-color: #ff9800;
+}
+
+.pause-button:hover:not(:disabled) {
+    background-color: #e68900;
+}
+
+.reset-button {
+    background-color: #2196F3;
+}
+
+.reset-button:hover:not(:disabled) {
+    background-color: #0b7dda;
+}
+
+.start-button:disabled, .pause-button:disabled, .reset-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
