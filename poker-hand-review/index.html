@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poker Hand Drill</title>
+<link rel="stylesheet" href="src/app.css">
+</head>
+<body>
+
+<div class="wrap">
+  <div class="toprow">
+    <span class="tag tag-pos" id="posTag">Position</span>
+  </div>
+
+  <div class="controlrow" style="margin-top:0; margin-bottom:1rem;">
+    <button id="revealBtn">Reveal next line</button>
+    <button id="newHandBtn">New hand</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tabbtn active" id="tabTable">Table view</button>
+    <button class="tabbtn" id="tabLog">Hand history log</button>
+  </div>
+
+  <div id="tableView"></div>
+  <div id="logView" style="display:none;" class="log"></div>
+
+  <!-- The same five questions every hand, on purpose. Not to be made hand-specific:
+       see prototype/poker_drill_README.md, "Design intent" item 4. -->
+  <div class="checklist">
+    <div><b>Position:</b> in or out of position this street?</div>
+    <div><b>Board texture:</b> wetter or drier than last street?</div>
+    <div><b>Bet size vs pot:</b> small / medium / large?</div>
+    <div><b>Range parity:</b> favors raiser or caller?</div>
+    <div><b>Action pattern:</b> did aggression change from last street?</div>
+  </div>
+
+  <div class="reveal-answer" id="answerBox" style="display:none;"></div>
+  <div class="controlrow" id="answerRow" style="display:none;">
+    <button id="answerBtn">Show hand type / answer key</button>
+  </div>
+</div>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>

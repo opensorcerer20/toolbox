@@ -1,0 +1,157 @@
+/*
+ * Ported from prototype/poker_drill.html. That file ran as a Claude.ai artifact and inherited
+ * --surface-*, --text-*, --border* and --font-* from the host page, falling back to literals when
+ * they were missing. Standing alone, the fallbacks are all there is, so they are defined here once
+ * as the palette rather than repeated at every use.
+ */
+:root {
+  --felt: #1c3d2e;
+
+  --surface-1: #f1efe8;
+  --surface-2: #fff;
+  --border: #ddd;
+  --border-strong: #ccc;
+
+  --text-primary: #111;
+  --text-secondary: #555;
+  --text-accent: #0c447c;
+  --bg-accent: #e6f1fb;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius: 8px;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-sans); }
+.wrap { max-width: 720px; margin: 0 auto; padding: 1rem; }
+
+button {
+  background: var(--surface-2);
+  border: 0.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+button:hover { background: var(--surface-1); }
+button:active { transform: scale(0.98); }
+button:disabled { opacity: 0.4; cursor: default; }
+
+.toprow { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+.tag {
+  display: inline-block;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+.tag-pos { background: var(--bg-accent); color: var(--text-accent); }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 1rem; border-bottom: 0.5px solid var(--border); }
+.tabbtn {
+  border: none;
+  background: none;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  padding: 8px 4px;
+  margin-right: 16px;
+}
+.tabbtn.active {
+  border-bottom: 2px solid var(--text-accent);
+  color: var(--text-accent);
+  font-weight: 500;
+}
+
+.table-area {
+  background: var(--felt);
+  border-radius: 16px;
+  padding: 1.5rem 1rem;
+  position: relative;
+  min-height: 220px;
+  margin-bottom: 1rem;
+  color: white;
+}
+.board {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 1rem;
+  min-height: 44px;
+}
+.board-empty { opacity: 0.6; font-size: 13px; align-self: center; }
+.card {
+  background: white;
+  color: #111;
+  border-radius: 5px;
+  width: 34px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.card.red { color: #b91c1c; }
+.card.facedown { background: rgba(255, 255, 255, 0.25); color: transparent; }
+.pot-line {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 1rem;
+}
+.seats { display: flex; justify-content: space-between; gap: 8px; }
+.seat {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.seat.hero { border-color: rgba(255, 255, 255, 0.5); }
+.seat-name { font-size: 12px; opacity: 0.85; margin-bottom: 4px; }
+.seat-cards { display: flex; justify-content: center; gap: 3px; margin-bottom: 4px; }
+.seat-cards .card { width: 26px; height: 34px; font-size: 12px; }
+.seat-stack { font-size: 11px; opacity: 0.7; }
+.seat-act { font-size: 11px; color: #ffd166; min-height: 14px; margin-top: 2px; }
+
+.log {
+  background: var(--surface-1);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.9;
+  min-height: 80px;
+  white-space: pre-wrap;
+  color: var(--text-primary);
+}
+.log .fresh { color: var(--text-accent); font-weight: 500; }
+
+.checklist {
+  background: var(--surface-2);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  margin-top: 1rem;
+  font-size: 13px;
+}
+.checklist div { margin-bottom: 6px; color: var(--text-secondary); }
+.checklist div b { color: var(--text-primary); font-weight: 500; }
+
+.controlrow { display: flex; gap: 8px; margin-top: 1rem; }
+.controlrow button { flex: 1; }
+
+.reveal-answer {
+  margin-top: 1rem;
+  background: var(--surface-1);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.reveal-answer b { color: var(--text-primary); }
