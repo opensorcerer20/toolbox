@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Poker Hand Drill">
+  <!-- Padded to keep the artwork inside the safe zone a maskable icon may crop to. -->
+  <rect width="512" height="512" fill="#1c3d2e"/>
+  <g transform="translate(256 268)">
+    <g transform="rotate(-14)">
+      <rect x="-124" y="-116" width="150" height="212" rx="18" fill="#f1efe8"/>
+      <text x="-49" y="24" font-family="system-ui, -apple-system, sans-serif" font-size="112"
+            font-weight="600" fill="#1c3d2e" text-anchor="middle">A</text>
+    </g>
+    <g transform="rotate(11) translate(30 6)">
+      <rect x="-26" y="-116" width="150" height="212" rx="18" fill="#ffffff"/>
+      <text x="49" y="30" font-family="system-ui, -apple-system, sans-serif" font-size="124"
+            fill="#b91c1c" text-anchor="middle">♥</text>
+    </g>
+  </g>
+</svg>

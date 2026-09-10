@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Poker Hand Drill</title>
+<meta name="theme-color" content="#1c3d2e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon.svg">
 <link rel="stylesheet" href="src/app.css">
 </head>
 <body>
@@ -43,5 +47,15 @@
 </div>
 
 <script type="module" src="src/app.js"></script>
+<script>
+  // Registered outside the module so a failure here cannot stop the drill from loading.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(err => {
+        console.warn('Service worker registration failed; the app still runs online.', err);
+      });
+    });
+  }
+</script>
 </body>
 </html>
