@@ -7,7 +7,7 @@
  * version string on every change to the files below, or the browser will keep serving the old
  * copy. While developing, tick DevTools > Application > Service workers > "Update on reload".
  */
-const CACHE = 'poker-hand-drill-v1';
+const CACHE = 'poker-hand-drill-v2';
 
 const ASSETS = [
   './',

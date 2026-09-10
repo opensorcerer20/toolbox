@@ -5,17 +5,17 @@
  *
  * One line per press is the whole point of the exercise (see prototype/poker_drill_README.md,
  * "Design intent"), so revealing is strictly one step forward through hand.lines and every view
- * renders from lineIdx alone.
+ * renders from lineIdx alone. The exception is the first press: "Start hand" jumps the setup - the
+ * header, the blinds, the deal - and stops on Hero's first decision, so no press is spent on a
+ * line the drill is not training.
  *
  * Villain type is deliberately absent. In the prototype it existed only to pick bet sizes, and
- * Step 1 hands have no betting; it returns in Step 2 along with the betting it describes.
+ * Milestone 1 hands have no betting; it returns in Milestone 2 along with the betting it describes.
  */
-import { generateHand } from './generate_hand.js';
+import { ACTION_TYPES, generateHand, heroFirstActionIndex } from './generate_hand.js';
 
 const SUIT_GLYPH = { s: '♠', h: '♥', d: '♦', c: '♣' };
 const RED_SUITS = new Set(['h', 'd']);
-const STREETS = ['flop', 'turn', 'river'];
-const ACTION_TYPES = new Set(['preflop', 'flop', 'turn', 'river']);
 
 let hand = null;
 let lineIdx = 0;
@@ -45,7 +45,7 @@ function currentStreetIdx() {
   return hand.lines.slice(0, lineIdx).filter(l => l.street).length;
 }
 
-// The pot as far as the reveal has got. Step 1 hands have no betting, so the only money is the
+// The pot as far as the reveal has got. Milestone 1 hands have no betting, so the only money is the
 // two blinds and the small blind completing - all of it revealed before the flop.
 function potSoFar() {
   return hand.lines.slice(0, lineIdx).reduce((pot, line) => {
@@ -62,11 +62,11 @@ function newHand() {
   render();
 }
 
-function revealNext() {
-  if (lineIdx < hand.lines.length) {
-    lineIdx++;
-    render();
-  }
+// First press deals the setup in one go; every press after that advances a single line.
+function advance() {
+  if (lineIdx === 0) lineIdx = heroFirstActionIndex(hand);
+  else if (lineIdx < hand.lines.length) lineIdx++;
+  render();
 }
 
 function render() {
@@ -74,7 +74,9 @@ function render() {
   renderLog();
   renderTable();
   el.revealBtn.disabled = complete;
-  el.revealBtn.textContent = complete ? 'Hand complete' : 'Reveal next line';
+  el.revealBtn.textContent = complete ? 'Hand complete'
+    : lineIdx === 0 ? 'Start hand'
+    : 'Reveal next line';
   el.answerRow.style.display = complete ? 'flex' : 'none';
 }
 
@@ -82,7 +84,7 @@ function render() {
 function renderLog() {
   const shown = hand.lines.slice(0, lineIdx);
   if (!shown.length) {
-    el.logView.textContent = 'Press "Reveal next line" to start.';
+    el.logView.textContent = 'Press "Start hand" to begin.';
     return;
   }
   el.logView.innerHTML = shown
@@ -151,7 +153,7 @@ function showAnswer() {
 }
 
 // Module scripts do not share the global scope, so handlers are bound here rather than inline.
-el.revealBtn.addEventListener('click', revealNext);
+el.revealBtn.addEventListener('click', advance);
 el.newHandBtn.addEventListener('click', newHand);
 el.tabTable.addEventListener('click', () => setView('table'));
 el.tabLog.addEventListener('click', () => setView('log'));

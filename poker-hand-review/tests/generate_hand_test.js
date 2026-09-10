@@ -4,8 +4,8 @@
  * The generator is pure and randomized, so the useful assertions are invariants rather than fixed
  * expected output: whatever cards and seating come out, the nine cards must be distinct, the text
  * must match the hand-history format exactly, and the heads-up convention must hold - button posts
- * the small blind, acts first preflop, acts last on every postflop street. Step 1 hands contain no
- * betting at all, so any bet/raise/fold line is a failure.
+ * the small blind, acts first preflop, acts last on every postflop street. Milestone 1 hands
+ * contain no betting at all, so any bet/raise/fold line is a failure.
  *
  * Each test loops over the whole sample of hands rather than becoming a subtest per hand, so a
  * green run reports thirteen checks instead of thousands.
@@ -17,7 +17,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { generateHand, handToText } from '../src/generate_hand.js';
+import { ACTION_TYPES, generateHand, handToText, heroFirstActionIndex } from '../src/generate_hand.js';
 
 const HANDS = 200;
 const CARD = /^[23456789TJQKA][shdc]$/;
@@ -41,7 +41,7 @@ function each(fn) {
  * disagree - a board card that only made it into one of them, say - this is what catches it.
  *
  * Several checks below overlap with this one on purpose (no betting, the check counts, and both
- * heads-up ordering checks). They restate Step 1's constraints by name so that loosening this
+ * heads-up ordering checks). They restate Milestone 1's constraints by name so that loosening this
  * helper cannot quietly stop testing them.
  */
 function expectedLines(hand) {
@@ -118,7 +118,7 @@ describe('hand history text', () => {
   }));
 });
 
-describe('no betting (Step 1)', () => {
+describe('no betting (Milestone 1)', () => {
   it('contains no bet, raise, or fold', () => each(hand => {
     hand.lines.forEach(l => {
       assert.doesNotMatch(l.text, /\b(bets|raises|folds)\b/, 'betting line');
@@ -158,6 +158,29 @@ describe('heads-up convention', () => {
     for (const street of ['flop', 'turn', 'river']) {
       assert.deepEqual(actors(street), [bb, btn], `wrong ${street} order`);
     }
+  }));
+});
+
+describe("Hero's first action", () => {
+  it('points at a Hero action with no earlier one', () => each(hand => {
+    const idx = heroFirstActionIndex(hand);
+    const line = hand.lines[idx];
+    assert.ok(line, `index ${idx} is past the end of the hand`);
+    assert.ok(ACTION_TYPES.has(line.type), `not an action line: ${line.text}`);
+    assert.ok(line.text.startsWith('Hero '), `not Hero's line: ${line.text}`);
+    const earlier = hand.lines.slice(0, idx)
+      .find(l => ACTION_TYPES.has(l.type) && l.text.startsWith('Hero '));
+    assert.equal(earlier, undefined, `Hero acted earlier: ${earlier && earlier.text}`);
+  }));
+
+  it('lands after the deal, and after any villain action preceding it', () => each(hand => {
+    const idx = heroFirstActionIndex(hand);
+    // 8 when Hero is on the button, 9 when Villain completes the small blind first.
+    assert.equal(idx, hand.heroBtn ? 8 : 9, 'wrong stop point');
+    assert.ok(
+      hand.lines.slice(0, idx).some(l => l.text.startsWith('Dealt to Hero')),
+      'Hero acts before being dealt to'
+    );
   }));
 });
 
