@@ -1,0 +1,23 @@
+Hand #274918365:  Hold'em No Limit ($1/$2 USD)
+Table 'Drill Table' 6-max Seat #1 is the button
+Seat 1: Villain ($200 in chips)
+Seat 4: Hero ($200 in chips)
+Hero: posts small blind $1
+Villain: posts big blind $2
+*** HOLE CARDS ***
+Dealt to Hero [T♣ 6♥]
+Villain raises to $6
+Hero calls $4
+*** FLOP *** [4♠ K♥ 7♦]
+Hero checks
+Villain bets $4
+Hero calls $4
+*** TURN *** [4♠ K♥ 7♦] [A♠]
+Hero checks
+Villain checks
+*** RIVER *** [4♠ K♥ 7♦] [A♠] [2♣]
+Hero checks
+Villain checks
+*** SHOWDOWN ***
+Hero shows [T♣ 6♥]
+Villain shows [T♦ 6♣]

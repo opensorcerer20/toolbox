@@ -1,0 +1,388 @@
+<style>
+:root {
+  --felt: #1c3d2e;
+  --felt-dark: #143023;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.wrap { max-width: 720px; margin: 0 auto; font-family: var(--font-sans, sans-serif); padding: 1rem 0; }
+.toprow { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+button {
+  background: var(--surface-2, #fff);
+  border: 0.5px solid var(--border-strong, #ccc);
+  border-radius: var(--radius, 8px);
+  padding: 8px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-primary, #111);
+}
+button:hover { background: var(--surface-1, #f5f5f5); }
+button:active { transform: scale(0.98); }
+button:disabled { opacity: 0.4; cursor: default; }
+.tag {
+  display: inline-block;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+.tag-pos { background: var(--bg-accent, #e6f1fb); color: var(--text-accent, #0c447c); }
+.tag-villain { background: var(--surface-1, #f1efe8); color: var(--text-secondary, #5f5e5a); }
+.tabs { display: flex; gap: 4px; margin-bottom: 1rem; border-bottom: 0.5px solid var(--border, #ddd); }
+.tabbtn {
+  border: none;
+  background: none;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  padding: 8px 4px;
+  margin-right: 16px;
+}
+.tabbtn.active { border-bottom: 2px solid var(--text-accent, #0c447c); color: var(--text-accent, #0c447c); font-weight: 500; }
+
+.table-area {
+  background: var(--felt);
+  border-radius: 16px;
+  padding: 1.5rem 1rem;
+  position: relative;
+  min-height: 220px;
+  margin-bottom: 1rem;
+  color: white;
+}
+.board {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 1rem;
+  min-height: 44px;
+}
+.card {
+  background: white;
+  color: #111;
+  border-radius: 5px;
+  width: 34px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.card.red { color: #b91c1c; }
+.pot-line {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255,255,255,0.75);
+  margin-bottom: 1rem;
+}
+.seats { display: flex; justify-content: space-between; gap: 8px; }
+.seat {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.seat.hero { border-color: rgba(255,255,255,0.5); }
+.seat-name { font-size: 12px; opacity: 0.85; margin-bottom: 4px; }
+.seat-cards { display: flex; justify-content: center; gap: 3px; margin-bottom: 4px; }
+.seat-cards .card { width: 26px; height: 34px; font-size: 12px; }
+.seat-stack { font-size: 11px; opacity: 0.7; }
+.seat-act { font-size: 11px; color: #ffd166; min-height: 14px; margin-top: 2px; }
+
+.log {
+  background: var(--surface-1, #f1efe8);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  line-height: 1.9;
+  min-height: 80px;
+  white-space: pre-wrap;
+  color: var(--text-primary, #222);
+}
+.log .fresh { color: var(--text-accent, #0c447c); font-weight: 500; }
+
+.checklist {
+  background: var(--surface-2, #fff);
+  border: 0.5px solid var(--border, #ddd);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  margin-top: 1rem;
+  font-size: 13px;
+}
+.checklist div { margin-bottom: 6px; color: var(--text-secondary, #555); }
+.checklist div b { color: var(--text-primary, #111); font-weight: 500; }
+
+.controlrow { display: flex; gap: 8px; margin-top: 1rem; }
+.controlrow button { flex: 1; }
+
+.reveal-answer {
+  margin-top: 1rem;
+  background: var(--surface-1, #f1efe8);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  font-size: 13px;
+  color: var(--text-secondary, #444);
+}
+.reveal-answer b { color: var(--text-primary, #111); }
+</style>
+
+<div class="wrap">
+  <div class="toprow">
+    <span class="tag tag-pos" id="posTag">Position</span>
+    <span class="tag tag-villain" id="villainTag">Villain</span>
+  </div>
+
+  <div class="controlrow" style="margin-top:0; margin-bottom:1rem;">
+    <button id="revealBtn" onclick="revealNext()">Reveal next line</button>
+    <button id="newHandBtn" onclick="newHand()">New hand</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tabbtn active" id="tabTable" onclick="setView('table')">Table view</button>
+    <button class="tabbtn" id="tabLog" onclick="setView('log')">Hand history log</button>
+  </div>
+
+  <div id="tableView"></div>
+  <div id="logView" style="display:none;" class="log"></div>
+
+  <div class="checklist">
+    <div><b>Position:</b> in or out of position this street?</div>
+    <div><b>Board texture:</b> wetter or drier than last street?</div>
+    <div><b>Bet size vs pot:</b> small / medium / large?</div>
+    <div><b>Range parity:</b> favors raiser or caller?</div>
+    <div><b>Action pattern:</b> did aggression change from last street?</div>
+  </div>
+
+  <div class="reveal-answer" id="answerBox" style="display:none;"></div>
+  <div class="controlrow" id="answerRow" style="display:none;">
+    <button onclick="toggleAnswer()">Show hand type / answer key</button>
+  </div>
+</div>
+
+<script>
+const SUITS = ['s','h','d','c'];
+const SUITSYM = {s:'♠', h:'♥', d:'♦', c:'♣'};
+const REDSUIT = {h:1, d:1};
+const RANKS = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'];
+
+function randCard(exclude) {
+  let c;
+  do {
+    const r = RANKS[Math.floor(Math.random()*RANKS.length)];
+    const s = SUITS[Math.floor(Math.random()*SUITS.length)];
+    c = r+s;
+  } while (exclude.includes(c));
+  return c;
+}
+function cardHtml(c) {
+  const r = c[0], s = c[1];
+  const cls = REDSUIT[s] ? 'card red' : 'card';
+  return '<div class="'+cls+'">'+r+SUITSYM[s]+'</div>';
+}
+
+const POSITIONS = ['In position', 'Out of position'];
+const VILLAINS = [
+  {name:'Loose-passive (station)', tag:'stationX'},
+  {name:'Loose-aggressive (bully)', tag:'bullyX'},
+  {name:'Tight-aggressive (TAG)', tag:'tagX'}
+];
+
+let hand = null;
+let lineIdx = 0;
+
+function pct(n){ return Math.round(n); }
+
+function buildHand() {
+  const used = [];
+  function draw(){ const c = randCard(used); used.push(c); return c; }
+
+  const pos = POSITIONS[Math.floor(Math.random()*POSITIONS.length)];
+  const villain = VILLAINS[Math.floor(Math.random()*VILLAINS.length)];
+  const heroCards = [draw(), draw()];
+  const villainCards = [draw(), draw()];
+  const flop = [draw(), draw(), draw()];
+  const turn = draw();
+  const river = draw();
+
+  const sb = 1, bb = 2;
+  let pot = 0;
+  const heroStack = 200, villStack = 200;
+  const heroBtn = pos === 'In position';
+
+  // sizes as % pot, chosen per villain type flavor
+  const preflopRaise = 6;
+  pot = preflopRaise * 2 + sb + bb - preflopRaise; // rough, simplified below with explicit math
+
+  // We'll just track pot manually with simple numbers instead of being hyper-precise.
+  let potTotal = preflopRaise + preflopRaise; // both put in 6
+  const lines = [];
+  const heroName = 'Hero';
+  const villName = 'Villain';
+
+  lines.push({type:'meta', text: "PokerStars Hand #"+Math.floor(100000000+Math.random()*899999999)+":  Hold'em No Limit ($1/$2 USD) - Live"});
+  lines.push({type:'meta', text: "Table 'Drill Table' 6-max Seat #"+(heroBtn?1:4)+" is the button"});
+  lines.push({type:'meta', text: "Seat 1: "+(heroBtn?heroName:villName)+" ($200 in chips)"});
+  lines.push({type:'meta', text: "Seat 4: "+(heroBtn?villName:heroName)+" ($200 in chips)"});
+  lines.push({type:'blind', text: (heroBtn?villName:heroName)+": posts small blind $1"});
+  lines.push({type:'blind', text: (heroBtn?heroName:villName)+": posts big blind $2"});
+  lines.push({type:'holecards', text: "*** HOLE CARDS ***"});
+  lines.push({type:'holecards', text: "Dealt to "+heroName+" ["+heroCards.join(' ')+"]"});
+
+  if (heroBtn) {
+    lines.push({type:'preflop', text: heroName+" raises to $6"});
+    lines.push({type:'preflop', text: villName+" calls $4"});
+  } else {
+    lines.push({type:'preflop', text: villName+" raises to $6"});
+    lines.push({type:'preflop', text: heroName+" calls $4"});
+  }
+
+  lines.push({type:'street', text: "*** FLOP *** ["+flop.join(' ')+"]", street:'flop', pot: potTotal});
+
+  // flop action, size depends on villain type
+  const flopBetter = heroBtn ? villName : heroName; // OOP acts first typically
+  const flopSizePct = villain.tag==='stationX' ? 55 : villain.tag==='bullyX' ? 75 : 33;
+  const flopBet = Math.round(potTotal * flopSizePct/100);
+  potTotal += flopBet;
+  lines.push({type:'flop', text: flopBetter+" bets $"+flopBet});
+  const flopCaller = flopBetter===heroName?villName:heroName;
+  potTotal += flopBet;
+  lines.push({type:'flop', text: flopCaller+" calls $"+flopBet});
+
+  lines.push({type:'street', text: "*** TURN *** ["+flop.join(' ')+"] ["+turn+"]", street:'turn', pot: potTotal});
+  const turnSizePct = villain.tag==='stationX' ? 60 : villain.tag==='bullyX' ? 100 : 0;
+  if (turnSizePct === 0) {
+    lines.push({type:'turn', text: flopBetter+" checks"});
+    lines.push({type:'turn', text: flopCaller+" checks"});
+  } else {
+    const turnBet = Math.round(potTotal * turnSizePct/100);
+    potTotal += turnBet;
+    lines.push({type:'turn', text: flopBetter+" bets $"+turnBet});
+    potTotal += turnBet;
+    lines.push({type:'turn', text: flopCaller+" calls $"+turnBet});
+  }
+
+  lines.push({type:'street', text: "*** RIVER *** ["+flop.join(' ')+"] ["+turn+"] ["+river+"]", street:'river', pot: potTotal});
+  lines.push({type:'river', text: flopBetter+" checks"});
+  lines.push({type:'river', text: flopCaller+" checks"});
+  lines.push({type:'street', text: "*** SHOWDOWN ***"});
+  lines.push({type:'street', text: heroName+" shows ["+heroCards.join(' ')+"]"});
+  lines.push({type:'street', text: villName+" shows ["+villainCards.join(' ')+"]"});
+
+  return {
+    pos, villain, heroCards, villainCards, flop, turn, river,
+    heroBtn, lines, potTotal
+  };
+}
+
+function newHand() {
+  hand = buildHand();
+  lineIdx = 0;
+  document.getElementById('posTag').textContent = hand.pos;
+  document.getElementById('villainTag').textContent = hand.villain.name;
+  document.getElementById('answerBox').style.display = 'none';
+  document.getElementById('answerRow').style.display = 'none';
+  render();
+}
+
+function currentStreetIdx() {
+  // how many street markers have been revealed
+  let count = 0;
+  for (let i=0;i<lineIdx;i++){
+    if (hand.lines[i].type==='street' && hand.lines[i].street) count++;
+  }
+  return count; // 0=preflop,1=flop,2=turn,3=river
+}
+
+function render() {
+  renderLog();
+  renderTable();
+  document.getElementById('revealBtn').disabled = lineIdx >= hand.lines.length;
+  document.getElementById('revealBtn').textContent = lineIdx >= hand.lines.length ? 'Hand complete' : 'Reveal next line';
+  document.getElementById('answerRow').style.display = lineIdx >= hand.lines.length ? 'flex' : 'none';
+}
+
+function renderLog() {
+  const shown = hand.lines.slice(0, lineIdx);
+  let html = '';
+  for (let i = shown.length - 1; i >= 0; i--) {
+    const cls = (i === lineIdx-1) ? 'fresh' : '';
+    html += '<span class="'+cls+'">'+shown[i].text+'</span>\n';
+  }
+  document.getElementById('logView').innerHTML = html || 'Press "Reveal next line" to start.';
+}
+
+function renderTable() {
+  const streetN = currentStreetIdx();
+  let boardCards = [];
+  if (streetN >= 1) boardCards = boardCards.concat(hand.flop);
+  if (streetN >= 2) boardCards.push(hand.turn);
+  if (streetN >= 3) boardCards.push(hand.river);
+
+  // find last two action lines revealed for seat annotations
+  let heroAct = '', villAct = '';
+  for (let i=0;i<lineIdx;i++){
+    const l = hand.lines[i];
+    if (l.type==='flop'||l.type==='turn'||l.type==='river'||l.type==='preflop') {
+      if (l.text.startsWith('Hero')) heroAct = l.text.replace('Hero ','');
+      if (l.text.startsWith('Villain')) villAct = l.text.replace('Villain ','');
+    }
+  }
+
+  const heroShown = lineIdx >= hand.lines.findIndex(l=>l.type==='holecards' && l.text.startsWith('Dealt'))+1;
+
+  let html = '<div class="table-area">';
+  html += '<div class="board">';
+  if (boardCards.length) {
+    boardCards.forEach(c => html += cardHtml(c));
+  } else {
+    html += '<span style="opacity:0.6; font-size:13px; align-self:center;">Preflop</span>';
+  }
+  html += '</div>';
+  html += '<div class="pot-line">Pot: $'+ (streetN>0 ? hand.lines.find(l=>l.street && l.street===['flop','turn','river'][streetN-1])?.pot ?? '' : '~9') +'</div>';
+  html += '<div class="seats">';
+
+  html += '<div class="seat'+(hand.heroBtn?'':'')+'"><div class="seat-name">Villain'+(!hand.heroBtn?' (BTN)':'')+'</div>';
+  html += '<div class="seat-cards"><div class="card" style="background:rgba(255,255,255,0.25); color:transparent;">?</div><div class="card" style="background:rgba(255,255,255,0.25); color:transparent;">?</div></div>';
+  html += '<div class="seat-stack">$200</div><div class="seat-act">'+villAct+'</div></div>';
+
+  html += '<div class="seat hero"><div class="seat-name">Hero'+(hand.heroBtn?' (BTN)':'')+'</div>';
+  html += '<div class="seat-cards">'+ (heroShown ? hand.heroCards.map(cardHtml).join('') : '<div class="card">?</div><div class="card">?</div>') +'</div>';
+  html += '<div class="seat-stack">$200</div><div class="seat-act">'+heroAct+'</div></div>';
+
+  html += '</div></div>';
+  document.getElementById('tableView').innerHTML = html;
+}
+
+function revealNext() {
+  if (lineIdx < hand.lines.length) {
+    lineIdx++;
+    render();
+  }
+}
+
+function setView(v) {
+  document.getElementById('tabTable').classList.toggle('active', v==='table');
+  document.getElementById('tabLog').classList.toggle('active', v==='log');
+  document.getElementById('tableView').style.display = v==='table' ? 'block' : 'none';
+  document.getElementById('logView').style.display = v==='log' ? 'block' : 'none';
+}
+
+function toggleAnswer() {
+  const box = document.getElementById('answerBox');
+  const villDesc = {
+    stationX: "Calls wide, rarely bluffs — value bet thinner, don't bother bluffing.",
+    bullyX: "Bets big and often — separate value from pressure using their showdown history.",
+    tagX: "Narrow, controlled — small c-bet then check-check is a real capped-range signal here."
+  };
+  box.innerHTML = '<b>Villain type:</b> '+hand.villain.name+'<br>'+
+    '<b>Tendency:</b> '+villDesc[hand.villain.tag]+'<br>'+
+    '<b>Hero cards:</b> '+hand.heroCards.join(' ')+' &nbsp; <b>Villain cards:</b> '+hand.villainCards.join(' ')+'<br>'+
+    '<b>Board:</b> '+hand.flop.join(' ')+' '+hand.turn+' '+hand.river;
+  box.style.display = 'block';
+}
+
+newHand();
+</script>
