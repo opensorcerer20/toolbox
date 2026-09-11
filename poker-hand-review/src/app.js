@@ -9,8 +9,9 @@
  * header, the blinds, the deal - and stops on Hero's first decision, so no press is spent on a
  * line the drill is not training.
  *
- * Villain type is deliberately absent. In the prototype it existed only to pick bet sizes, and
- * Milestone 1 hands have no betting; it returns in Milestone 2 along with the betting it describes.
+ * Villain type is deliberately absent from the display. Every hand is against the same loose-passive
+ * player, so a tag saying so on every hand would be noise; it earns its place once the other
+ * personalities land and the label starts carrying information.
  */
 import { ACTION_TYPES, generateHand, heroFirstActionIndex } from './generate_hand.js';
 
@@ -45,13 +46,11 @@ function currentStreetIdx() {
   return hand.lines.slice(0, lineIdx).filter(l => l.street).length;
 }
 
-// The pot as far as the reveal has got. Milestone 1 hands have no betting, so the only money is the
-// two blinds and the small blind completing - all of it revealed before the flop.
+// The pot as far as the reveal has got. Every line carries the pot as it stood after that action,
+// so the last revealed line already has the answer - no re-adding the text, which would double
+// count a raise anyway, since "raises to $12" names a street total rather than an increment.
 function potSoFar() {
-  return hand.lines.slice(0, lineIdx).reduce((pot, line) => {
-    const amount = (line.type === 'blind' || line.type === 'preflop') && line.text.match(/\$(\d+)$/);
-    return amount ? pot + Number(amount[1]) : pot;
-  }, 0);
+  return lineIdx ? hand.lines[lineIdx - 1].pot : 0;
 }
 
 function newHand() {
