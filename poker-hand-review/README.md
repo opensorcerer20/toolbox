@@ -14,7 +14,7 @@ Most important: this app should be narrow in focus until it has reached a minimu
 - Test the pwa
 - Make adjustments based on user testing
 
-### Milestone 2 (in progress): loose passive betting
+### Milestone 2 (complete): loose passive betting
 - Hand generation now includes betting patterns for Villain (loose passive) and Hero (tight aggressive). See prototype/poker_drill_README.md for information on betting for those personalities.
 - If the Villain bets or raises, the Hero switches to calldown mode, even if the Villain stops betting on later streets.
 
@@ -22,6 +22,8 @@ Most important: this app should be narrow in focus until it has reached a minimu
 - Reminder: the point of the app is to read hand range of opponent, which means situations where the opponent would normally fold have less value e.g hero gets a big hand and bets big when villain has second pair or worse
 - Hero changes betting strategy if their hand improves or degrades
 - Villain will fold to aggression if they dont have at least top pair
+- Loose passive should stop betting if 3 straight cards or flush cards are on the board and they dont have that straight or flush
+- No handling for loose passive when the board pairs yet
 - Need to work to enumerate other situations to consider for accurate simulation of betting with loose passive
 
 ## Future roadmap
